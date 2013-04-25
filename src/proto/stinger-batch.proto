@@ -1,0 +1,30 @@
+package gt.stinger;
+
+/* Note: while source numbers and strings are
+   listed as optional, one or the other but not both 
+   would be required.  The same is true of destination
+   strings and numbers.
+ */
+
+message EdgeInsertion {
+  optional int64 source = 1 [default = 0];
+  optional string source_str = 2 [default = ""];
+  optional int64 destination =3 [default = 1];
+  optional string destination_str = 4 [default = ""];
+  optional int64 weight = 5 [default = 1];
+  optional int64 time = 6 [default = 1];
+}
+
+message EdgeDeletion {
+  optional int64 source = 1 [default = 0];
+  optional string source_str = 2 [default = ""];
+  optional int64 destination =3 [default = 1];
+  optional string destination_str = 4 [default = ""];
+}
+
+message StingerBatch {
+  optional int64 version = 1 [default = 1];
+
+  repeated EdgeInsertion insertions = 3;
+  repeated EdgeDeletion deletions = 4;
+}

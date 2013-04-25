@@ -35,7 +35,10 @@ FRAGMENT_OBJ = $(addsuffix .h,$(FRAGMENT_SRC))
 STINGER_ALL_SRC	= $(STINGER_CORE_SRC) $(STINGER_UTIL_SRC) $(STINGER_ALG_SRC) $(STINGER_STREAM_SRC) $(STINGER_LIB_SRC)
 STINGER_ALL_OBJ	= $(STINGER_CORE_OBJ) $(STINGER_UTIL_OBJ) $(STINGER_ALG_OBJ) $(STINGER_STREAM_OBJ) $(STINGER_LIB_OBJ)
 
-CFLAGS+= -Iinc/alg -Iinc/stream -Iinc/util -Iinc/core -Iinc -I./ $(STINGER_LIB_INCLUDE)
+CFLAGS+= -Ilib/protobuf-2.5.0/src -Iinc/alg -Iinc/stream -Iinc/util -Isrc/proto -Iinc/core -Iinc -I./ $(STINGER_LIB_INCLUDE)
+
+LDFLAGS+= -Llib/protobuf-2.5.0/src/.libs
+LDLIBS+= -lprotobuf
 
 
 inc/fragments/%.h: inc/fragments/%
@@ -71,7 +74,10 @@ objdirs:
 lib/%:
 	cd `echo $@ | sed -e 's/\(lib\/[^\/]*\)\/.*$$/\1/'`; make
 
-main:	main.cpp $(STINGER_ALL_OBJ) $(BLECHIO)
+src/proto/stinger-batch.pb.cc: src/proto/stinger-batch.proto
+	protoc --cpp_out=./ src/proto/stinger-batch.proto
+
+main:	main.cpp src/proto/stinger-batch.pb.cc $(STINGER_ALL_OBJ) $(BLECHIO)
 	$(CXX) $(MAINPLFLAG) $(CPPFLAGS) $(CFLAGS) -o $@ $^ \
 		$(LDFLAGS) $(LDLIBS)
 
