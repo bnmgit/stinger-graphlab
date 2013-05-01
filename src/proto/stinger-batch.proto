@@ -27,4 +27,6 @@ message StingerBatch {
 
   repeated EdgeInsertion insertions = 3;
   repeated EdgeDeletion deletions = 4;
+
+  optional bool make_undirected = 5 [default = true];
 }

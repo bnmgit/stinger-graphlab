@@ -64,8 +64,6 @@ readCSVLineDynamic(char delim, FILE * file, char ** buf, uint64_t * bufSize, cha
     locBufSize += 1;
     locBuf = xrealloc(locBuf, sizeof(char) * locBufSize);
   }
-  if(field)
-    locLengths[field-1] -= 1;
   locCount = field;
 
   *buf	      = locBuf;

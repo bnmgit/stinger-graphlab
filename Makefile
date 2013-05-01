@@ -47,7 +47,7 @@ inc/fragments/%.h: inc/fragments/%
 	echo ";" >> $@
 
 .PHONY:	all
-all: main 
+all: server client_demo
 
 printsettings:
 	echo STINGER_CORE      $(STINGER_CORE)    
@@ -77,7 +77,11 @@ lib/%:
 src/proto/stinger-batch.pb.cc: src/proto/stinger-batch.proto
 	protoc --cpp_out=./ src/proto/stinger-batch.proto
 
-main:	main.cpp src/proto/stinger-batch.pb.cc $(STINGER_ALL_OBJ) $(BLECHIO)
+server:	server.cpp src/proto/stinger-batch.pb.cc $(STINGER_ALL_OBJ) $(BLECHIO)
+	$(CXX) $(MAINPLFLAG) $(CPPFLAGS) $(CFLAGS) -o $@ $^ \
+		$(LDFLAGS) $(LDLIBS)
+
+client_demo:	client_demo.cpp src/proto/stinger-batch.pb.cc $(STINGER_ALL_OBJ) $(BLECHIO)
 	$(CXX) $(MAINPLFLAG) $(CPPFLAGS) $(CFLAGS) -o $@ $^ \
 		$(LDFLAGS) $(LDLIBS)
 

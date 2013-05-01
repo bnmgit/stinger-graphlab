@@ -389,19 +389,29 @@ class StingerBatch : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::gt::stinger::EdgeDeletion >*
       mutable_deletions();
 
+  // optional bool make_undirected = 5 [default = true];
+  inline bool has_make_undirected() const;
+  inline void clear_make_undirected();
+  static const int kMakeUndirectedFieldNumber = 5;
+  inline bool make_undirected() const;
+  inline void set_make_undirected(bool value);
+
   // @@protoc_insertion_point(class_scope:gt.stinger.StingerBatch)
  private:
   inline void set_has_version();
   inline void clear_has_version();
+  inline void set_has_make_undirected();
+  inline void clear_has_make_undirected();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::int64 version_;
   ::google::protobuf::RepeatedPtrField< ::gt::stinger::EdgeInsertion > insertions_;
   ::google::protobuf::RepeatedPtrField< ::gt::stinger::EdgeDeletion > deletions_;
+  bool make_undirected_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_src_2fproto_2fstinger_2dbatch_2eproto();
   friend void protobuf_AssignDesc_src_2fproto_2fstinger_2dbatch_2eproto();
@@ -907,6 +917,28 @@ StingerBatch::deletions() const {
 inline ::google::protobuf::RepeatedPtrField< ::gt::stinger::EdgeDeletion >*
 StingerBatch::mutable_deletions() {
   return &deletions_;
+}
+
+// optional bool make_undirected = 5 [default = true];
+inline bool StingerBatch::has_make_undirected() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void StingerBatch::set_has_make_undirected() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void StingerBatch::clear_has_make_undirected() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void StingerBatch::clear_make_undirected() {
+  make_undirected_ = true;
+  clear_has_make_undirected();
+}
+inline bool StingerBatch::make_undirected() const {
+  return make_undirected_;
+}
+inline void StingerBatch::set_make_undirected(bool value) {
+  set_has_make_undirected();
+  make_undirected_ = value;
 }
 
 
