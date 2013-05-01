@@ -22,6 +22,12 @@ message EdgeDeletion {
   optional string destination_str = 4 [default = ""];
 }
 
+enum BatchType {
+  NUMBERS_ONLY = 0;
+  STRINGS_ONLY = 1;
+  MIXED	       = 2;
+}
+
 message StingerBatch {
   optional int64 version = 1 [default = 1];
 
@@ -29,4 +35,5 @@ message StingerBatch {
   repeated EdgeDeletion deletions = 4;
 
   optional bool make_undirected = 5 [default = true];
+  optional BatchType type = 6 [default = NUMBERS_ONLY];
 }

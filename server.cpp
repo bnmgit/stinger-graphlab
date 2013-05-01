@@ -18,6 +18,8 @@ using namespace gt::stinger;
 int
 main(int argc, char *argv[])
 {
+  struct stinger * S = stinger_new();
+
   /* global options */
   int port = 10101;
   uint64_t buffer_size = 1ULL << 28ULL;
@@ -77,7 +79,17 @@ main(int argc, char *argv[])
     if(bytes_received > 0) {
       StingerBatch batch;
       batch.ParseFromString((const char *)buffer);
+
       batch.PrintDebugString();
+
+      switch(batch.type()) {
+	case NUMBERS_ONLY: {
+	} break;
+	case STRINGS_ONLY: {
+	} break;
+	case MIXED: {
+	} break;
+      }
     }
   }
 

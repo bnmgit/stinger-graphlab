@@ -30,6 +30,7 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::Descriptor* StingerBatch_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   StingerBatch_reflection_ = NULL;
+const ::google::protobuf::EnumDescriptor* BatchType_descriptor_ = NULL;
 
 }  // namespace
 
@@ -79,11 +80,12 @@ void protobuf_AssignDesc_src_2fproto_2fstinger_2dbatch_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(EdgeDeletion));
   StingerBatch_descriptor_ = file->message_type(2);
-  static const int StingerBatch_offsets_[4] = {
+  static const int StingerBatch_offsets_[5] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(StingerBatch, version_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(StingerBatch, insertions_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(StingerBatch, deletions_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(StingerBatch, make_undirected_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(StingerBatch, type_),
   };
   StingerBatch_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -96,6 +98,7 @@ void protobuf_AssignDesc_src_2fproto_2fstinger_2dbatch_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(StingerBatch));
+  BatchType_descriptor_ = file->enum_type(0);
 }
 
 namespace {
@@ -141,11 +144,14 @@ void protobuf_AddDesc_src_2fproto_2fstinger_2dbatch_2eproto() {
     "ght\030\005 \001(\003:\0011\022\017\n\004time\030\006 \001(\003:\0011\"j\n\014EdgeDel"
     "etion\022\021\n\006source\030\001 \001(\003:\0010\022\024\n\nsource_str\030\002"
     " \001(\t:\000\022\026\n\013destination\030\003 \001(\003:\0011\022\031\n\017destin"
-    "ation_str\030\004 \001(\t:\000\"\235\001\n\014StingerBatch\022\022\n\007ve"
+    "ation_str\030\004 \001(\t:\000\"\320\001\n\014StingerBatch\022\022\n\007ve"
     "rsion\030\001 \001(\003:\0011\022-\n\ninsertions\030\003 \003(\0132\031.gt."
     "stinger.EdgeInsertion\022+\n\tdeletions\030\004 \003(\013"
     "2\030.gt.stinger.EdgeDeletion\022\035\n\017make_undir"
-    "ected\030\005 \001(\010:\004true", 457);
+    "ected\030\005 \001(\010:\004true\0221\n\004type\030\006 \001(\0162\025.gt.sti"
+    "nger.BatchType:\014NUMBERS_ONLY*:\n\tBatchTyp"
+    "e\022\020\n\014NUMBERS_ONLY\020\000\022\020\n\014STRINGS_ONLY\020\001\022\t\n"
+    "\005MIXED\020\002", 568);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "src/proto/stinger-batch.proto", &protobuf_RegisterTypes);
   EdgeInsertion::default_instance_ = new EdgeInsertion();
@@ -163,6 +169,21 @@ struct StaticDescriptorInitializer_src_2fproto_2fstinger_2dbatch_2eproto {
     protobuf_AddDesc_src_2fproto_2fstinger_2dbatch_2eproto();
   }
 } static_descriptor_initializer_src_2fproto_2fstinger_2dbatch_2eproto_;
+const ::google::protobuf::EnumDescriptor* BatchType_descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return BatchType_descriptor_;
+}
+bool BatchType_IsValid(int value) {
+  switch(value) {
+    case 0:
+    case 1:
+    case 2:
+      return true;
+    default:
+      return false;
+  }
+}
+
 
 // ===================================================================
 
@@ -975,6 +996,7 @@ const int StingerBatch::kVersionFieldNumber;
 const int StingerBatch::kInsertionsFieldNumber;
 const int StingerBatch::kDeletionsFieldNumber;
 const int StingerBatch::kMakeUndirectedFieldNumber;
+const int StingerBatch::kTypeFieldNumber;
 #endif  // !_MSC_VER
 
 StingerBatch::StingerBatch()
@@ -995,6 +1017,7 @@ void StingerBatch::SharedCtor() {
   _cached_size_ = 0;
   version_ = GOOGLE_LONGLONG(1);
   make_undirected_ = true;
+  type_ = 0;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1032,6 +1055,7 @@ void StingerBatch::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     version_ = GOOGLE_LONGLONG(1);
     make_undirected_ = true;
+    type_ = 0;
   }
   insertions_.Clear();
   deletions_.Clear();
@@ -1102,6 +1126,27 @@ bool StingerBatch::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(48)) goto parse_type;
+        break;
+      }
+
+      // optional .gt.stinger.BatchType type = 6 [default = NUMBERS_ONLY];
+      case 6: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_type:
+          int value;
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
+                 input, &value)));
+          if (::gt::stinger::BatchType_IsValid(value)) {
+            set_type(static_cast< ::gt::stinger::BatchType >(value));
+          } else {
+            mutable_unknown_fields()->AddVarint(6, value);
+          }
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -1146,6 +1191,12 @@ void StingerBatch::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteBool(5, this->make_undirected(), output);
   }
 
+  // optional .gt.stinger.BatchType type = 6 [default = NUMBERS_ONLY];
+  if (has_type()) {
+    ::google::protobuf::internal::WireFormatLite::WriteEnum(
+      6, this->type(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -1178,6 +1229,12 @@ void StingerBatch::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(5, this->make_undirected(), target);
   }
 
+  // optional .gt.stinger.BatchType type = 6 [default = NUMBERS_ONLY];
+  if (has_type()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
+      6, this->type(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -1199,6 +1256,12 @@ int StingerBatch::ByteSize() const {
     // optional bool make_undirected = 5 [default = true];
     if (has_make_undirected()) {
       total_size += 1 + 1;
+    }
+
+    // optional .gt.stinger.BatchType type = 6 [default = NUMBERS_ONLY];
+    if (has_type()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::EnumSize(this->type());
     }
 
   }
@@ -1252,6 +1315,9 @@ void StingerBatch::MergeFrom(const StingerBatch& from) {
     if (from.has_make_undirected()) {
       set_make_undirected(from.make_undirected());
     }
+    if (from.has_type()) {
+      set_type(from.type());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -1279,6 +1345,7 @@ void StingerBatch::Swap(StingerBatch* other) {
     insertions_.Swap(&other->insertions_);
     deletions_.Swap(&other->deletions_);
     std::swap(make_undirected_, other->make_undirected_);
+    std::swap(type_, other->type_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

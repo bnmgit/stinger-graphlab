@@ -23,6 +23,7 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/extension_set.h>
+#include <google/protobuf/generated_enum_reflection.h>
 #include <google/protobuf/unknown_field_set.h>
 // @@protoc_insertion_point(includes)
 
@@ -38,6 +39,26 @@ class EdgeInsertion;
 class EdgeDeletion;
 class StingerBatch;
 
+enum BatchType {
+  NUMBERS_ONLY = 0,
+  STRINGS_ONLY = 1,
+  MIXED = 2
+};
+bool BatchType_IsValid(int value);
+const BatchType BatchType_MIN = NUMBERS_ONLY;
+const BatchType BatchType_MAX = MIXED;
+const int BatchType_ARRAYSIZE = BatchType_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* BatchType_descriptor();
+inline const ::std::string& BatchType_Name(BatchType value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    BatchType_descriptor(), value);
+}
+inline bool BatchType_Parse(
+    const ::std::string& name, BatchType* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<BatchType>(
+    BatchType_descriptor(), name, value);
+}
 // ===================================================================
 
 class EdgeInsertion : public ::google::protobuf::Message {
@@ -396,12 +417,21 @@ class StingerBatch : public ::google::protobuf::Message {
   inline bool make_undirected() const;
   inline void set_make_undirected(bool value);
 
+  // optional .gt.stinger.BatchType type = 6 [default = NUMBERS_ONLY];
+  inline bool has_type() const;
+  inline void clear_type();
+  static const int kTypeFieldNumber = 6;
+  inline ::gt::stinger::BatchType type() const;
+  inline void set_type(::gt::stinger::BatchType value);
+
   // @@protoc_insertion_point(class_scope:gt.stinger.StingerBatch)
  private:
   inline void set_has_version();
   inline void clear_has_version();
   inline void set_has_make_undirected();
   inline void clear_has_make_undirected();
+  inline void set_has_type();
+  inline void clear_has_type();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -409,9 +439,10 @@ class StingerBatch : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::gt::stinger::EdgeInsertion > insertions_;
   ::google::protobuf::RepeatedPtrField< ::gt::stinger::EdgeDeletion > deletions_;
   bool make_undirected_;
+  int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   friend void  protobuf_AddDesc_src_2fproto_2fstinger_2dbatch_2eproto();
   friend void protobuf_AssignDesc_src_2fproto_2fstinger_2dbatch_2eproto();
@@ -941,6 +972,29 @@ inline void StingerBatch::set_make_undirected(bool value) {
   make_undirected_ = value;
 }
 
+// optional .gt.stinger.BatchType type = 6 [default = NUMBERS_ONLY];
+inline bool StingerBatch::has_type() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void StingerBatch::set_has_type() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void StingerBatch::clear_has_type() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void StingerBatch::clear_type() {
+  type_ = 0;
+  clear_has_type();
+}
+inline ::gt::stinger::BatchType StingerBatch::type() const {
+  return static_cast< ::gt::stinger::BatchType >(type_);
+}
+inline void StingerBatch::set_type(::gt::stinger::BatchType value) {
+  assert(::gt::stinger::BatchType_IsValid(value));
+  set_has_type();
+  type_ = value;
+}
+
 
 // @@protoc_insertion_point(namespace_scope)
 
@@ -951,6 +1005,10 @@ inline void StingerBatch::set_make_undirected(bool value) {
 namespace google {
 namespace protobuf {
 
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::gt::stinger::BatchType>() {
+  return ::gt::stinger::BatchType_descriptor();
+}
 
 }  // namespace google
 }  // namespace protobuf

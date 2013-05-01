@@ -141,6 +141,7 @@ main(int argc, char *argv[])
 
   StingerBatch batch;
   batch.set_make_undirected(true);
+  batch.set_type(use_strings ? STRINGS_ONLY : NUMBERS_ONLY);
 
   while(!feof(fp)) {
     line++;
