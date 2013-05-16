@@ -84,10 +84,78 @@ main(int argc, char *argv[])
 
       switch(batch.type()) {
 	case NUMBERS_ONLY: {
+	  OMP("omp parallel for")
+	  for(int i = 0; i < batch.insertions_size(); i++) {
+	    const EdgeInsertion & in = batch.insertions(i);
+	    stinger_incr_edge_pair(S, in.type(), in.source(), in.destination(), in.weight(), in.time());
+	  }
+	  OMP("omp parallel for")
+	  for(int d = 0; d < batch.deletions_size(); d++) {
+	    const EdgeDeletion & del = batch.deletions(d);
+	    stinger_remove_edge_pair(S, del.type(), del.source(), del.destination());
+	  }
 	} break;
 	case STRINGS_ONLY: {
+	  OMP("omp parallel for")
+	  for(int i = 0; i < batch.insertions_size(); i++) {
+	    const EdgeInsertion & in = batch.insertions(i);
+	    int64_t src, dest;
+	    stinger_mapping_create(S, in.source_str().c_str(), in.source_str().length(), &src);
+	    stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &dest);
+
+	    stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
+	  }
+	  OMP("omp parallel for")
+	  for(int d = 0; d < batch.deletions_size(); d++) {
+	    const EdgeDeletion & del = batch.deletions(d);
+	    int64_t src, dest;
+	    src = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
+	    dest = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
+
+	    if(src != -1 && dest != -1)
+	      stinger_remove_edge_pair(S, del.type(), src, dest);
+	  }
 	} break;
 	case MIXED: {
+	  OMP("omp parallel for")
+	  for(int i = 0; i < batch.insertions_size(); i++) {
+	    const EdgeInsertion & in = batch.insertions(i);
+	    int64_t src, dest;
+
+	    if(in.has_source()) {
+	      src = in.source();
+	    } else {
+	      stinger_mapping_create(S, in.source_str().c_str(), in.source_str().length(), &src);
+	    }
+
+	    if(in.has_destination()) {
+	      dest = in.destination();
+	    } else {
+	      stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &dest);
+	    }
+
+	    stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
+	  }
+	  OMP("omp parallel for")
+	  for(int d = 0; d < batch.deletions_size(); d++) {
+	    const EdgeDeletion & del = batch.deletions(d);
+	    int64_t src, dest;
+
+	    if(del.has_source()) {
+	      src = del.source();
+	    } else {
+	      src = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
+	    }
+
+	    if(del.has_destination()) {
+	      dest = del.destination();
+	    } else {
+	      dest = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
+	    }
+
+	    if(src != -1 && dest != -1)
+	      stinger_remove_edge_pair(S, del.type(), src, dest);
+	  }
 	} break;
       }
     }

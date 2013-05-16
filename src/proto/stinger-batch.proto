@@ -7,6 +7,8 @@ package gt.stinger;
  */
 
 message EdgeInsertion {
+  optional int64 type = 7 [default = 0];
+  optional string type_str = 8 [default = ""];
   optional int64 source = 1 [default = 0];
   optional string source_str = 2 [default = ""];
   optional int64 destination =3 [default = 1];
@@ -16,6 +18,8 @@ message EdgeInsertion {
 }
 
 message EdgeDeletion {
+  optional int64 type = 5 [default = 0];
+  optional string type_str = 6 [default = ""];
   optional int64 source = 1 [default = 0];
   optional string source_str = 2 [default = ""];
   optional int64 destination =3 [default = 1];

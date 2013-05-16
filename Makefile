@@ -24,7 +24,7 @@ STINGER_STREAM_OBJ	= $(subst src,obj,$(subst .c,.o,$(STINGER_STREAM_SRC)))
 STINGER_LIB	= mongoose/mongoose.c int-hm-seq/src/int-hm-seq.c string/src/astring.c fmemopen/src/fmemopen.c int-ht-seq/src/int-ht-seq.c
 STINGER_LIB_SRC	= $(addprefix lib/,$(STINGER_LIB))
 STINGER_LIB_OBJ	= $(subst src,obj,$(subst .c,.o,$(STINGER_LIB_SRC)))
-STINGER_LIB_INCLUDE = -Ilib/mongoose -Ilib/string/inc -Ilib/fmemopen/inc -Ilib/int-ht-seq/inc -Ilib/int-hm-seq/inc
+STINGER_LIB_INCLUDE = -Ilib/mongoose -Ilib/string/inc -Ilib/fmemopen/inc -Ilib/int-ht-seq/inc -Ilib/int-hm-seq/inc -Ilib/rapidjson/include
 
 #FRAGMENTS - text files to be embedded as a string via a header
 FRAGMENT     = vquery.html
