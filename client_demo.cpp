@@ -5,6 +5,10 @@ extern "C" {
 
 #include "stinger-batch.pb.h"
 
+#include "rapidjson/document.h"
+#include "rapidjson/filestream.h"
+#include "rapidjson/prettywriter.h"
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -30,12 +34,92 @@ enum csv_fields {
   FIELD_TIME
 };
 
+/* convert month string into numeric (assumes capitalization) */
+int64_t month(const char * month) {
+  switch(month[0]) {
+    case 'J': {
+      if(month[1] == 'a') {
+	return 1;
+      } else if(month[2] == 'n') {
+	return 6;
+      } else {
+	return 7;
+      }
+    } break;
+    case 'F': {
+      return 2;
+    } break;
+    case 'M': {
+      if(month[2] == 'r') {
+        return 3;
+      } else {
+	return 5;
+      }
+    } break;
+    case 'A': {
+      if(month[1] == 'p') {
+	return 4;
+      } else {
+	return 8;
+      }
+    } break;
+    case 'S': {
+      return 9;
+    } break;
+    case 'O': {
+      return 10;
+    } break;
+    case 'N': {
+      return 11;
+    } break;
+    case 'D': {
+      return 12;
+    } break;
+
+  }
+}
+
+#define CHAR2INT(X) ((X) - '0')
+/* convert a twitter timestamp string into a simplistic int64 representation
+ * that is readable when printed and quick to create: YYYYMMDDHHMMSS */
+int64_t
+twitter_timestamp(const char * time)
+{
+  /*
+  Mon Sep 24 03:35:21 +0000 2012
+  012345678901234567890123456789
+  0         1         2
+  */
+		/* year */
+  return CHAR2INT(time[26]) * 10000000000000 +
+	 CHAR2INT(time[27]) *  1000000000000 +
+	 CHAR2INT(time[28]) *   100000000000 +
+	 CHAR2INT(time[29]) *    10000000000 +
+	 /* month */
+	 month(time + 4) *         100000000 +
+	 /* day */
+	 CHAR2INT(time[8]) *        10000000 +
+	 CHAR2INT(time[9]) *         1000000 +
+	 /* hour */
+	 CHAR2INT(time[11]) *         100000 +
+	 CHAR2INT(time[12]) *          10000 +
+	 /* minute */
+	 CHAR2INT(time[14]) *            1000 +
+	 CHAR2INT(time[15]) *             100 +
+	 /* second */
+	 CHAR2INT(time[17]) *              10 +
+	 CHAR2INT(time[18]);
+}
+
 int
 main(int argc, char *argv[])
 {
   /* global options */
   int src_port = 10102;
   int dst_port = 10101;
+  int batch_size = 1000000;
+  int num_batches = -1;
+  int is_json = 0;
   uint64_t buffer_size = 1ULL << 28ULL;
   int use_strings = 0;
   struct sockaddr_in server_addr = { 0 };
@@ -43,7 +127,7 @@ main(int argc, char *argv[])
   char * filename;
 
   int opt = 0;
-  while(-1 != (opt = getopt(argc, argv, "p:b:d:a:s"))) {
+  while(-1 != (opt = getopt(argc, argv, "p:b:d:a:sjx:y:"))) {
     switch(opt) {
       case 'p': {
 	src_port = atoi(optarg);
@@ -55,6 +139,10 @@ main(int argc, char *argv[])
 
       case 'b': {
 	buffer_size = atol(optarg);
+      } break;
+
+      case 'j': {
+	is_json = 1;
       } break;
 
       case 'a': {
@@ -71,7 +159,7 @@ main(int argc, char *argv[])
 
       case '?':
       case 'h': {
-	printf("Usage:    %s [-p src_port] [-d dst_port] [-a server_addr] [-b buffer_size] [-s for strings] <input_csv>\n", argv[0]);
+	printf("Usage:    %s [-p src_port] [-d dst_port] [-a server_addr] [-b buffer_size] [-s for strings] [-x batch_size] [-y num_batches] <input_csv>\n", argv[0]);
 	printf("Defaults: src_port: %d dest_port: %d server: localhost buffer_size: %lu use_strings: %d\n", src_port, dst_port, (unsigned long) buffer_size, use_strings);
 	printf("\nCSV file format is is_delete,source,dest,weight,time where weight and time are\n"
 		 "optional 64-bit integers and source and dest are either strings or\n"
@@ -83,7 +171,7 @@ main(int argc, char *argv[])
   }
 
   if(optind >= argc) {
-    perror("Expected input CSV filename. -? for help");
+    perror("Expected input filename. -? for help");
     exit(0);
   } else {
     filename = argv[optind];
@@ -135,65 +223,119 @@ main(int argc, char *argv[])
   V("Parsing messages.");
 
   FILE * fp = fopen(filename, "r");
-  char * buf = NULL, ** fields = NULL;
-  uint64_t bufSize = 0, * lengths = NULL, fieldsSize = 0, count = 0;
-  int64_t line = 0;
 
-  StingerBatch batch;
-  batch.set_make_undirected(true);
-  batch.set_type(use_strings ? STRINGS_ONLY : NUMBERS_ONLY);
+  if(!is_json) {
+    char * buf = NULL, ** fields = NULL;
+    uint64_t bufSize = 0, * lengths = NULL, fieldsSize = 0, count = 0;
+    int64_t line = 0;
+    int batch_num = 0;
 
-  while(!feof(fp)) {
-    line++;
-    readCSVLineDynamic(',', fp, &buf, &bufSize, &fields, &lengths, &fieldsSize, &count);
+    StingerBatch batch;
+    batch.set_make_undirected(true);
+    batch.set_type(use_strings ? STRINGS_ONLY : NUMBERS_ONLY);
 
-    if(count <= 1)
-      continue;
-    if(count < 3) {
-      E_A("ERROR: too few elements on line %ld", (long) line);
-      continue;
-    }
+    while(!feof(fp)) {
 
-    /* is insert? */
-    if(fields[FIELD_IS_DELETE][0] == '0') {
-      EdgeInsertion * insertion = batch.add_insertions();
+      for(int e = 0; e < batch_size && !feof(fp); e++) {
+	line++;
+	readCSVLineDynamic(',', fp, &buf, &bufSize, &fields, &lengths, &fieldsSize, &count);
 
-      if(use_strings) {
-	insertion->set_source_str(fields[FIELD_SOURCE]);
-	insertion->set_destination_str(fields[FIELD_DEST]);
-      } else {
-	insertion->set_source(atol(fields[FIELD_SOURCE]));
-	insertion->set_destination(atol(fields[FIELD_DEST]));
-      }
+	if(count <= 1)
+	  continue;
+	if(count < 3) {
+	  E_A("ERROR: too few elements on line %ld", (long) line);
+	  continue;
+	}
 
-      if(count > 3) {
-	insertion->set_weight(atol(fields[FIELD_WEIGHT]));
-	if(count > 4) {
-	  insertion->set_time(atol(fields[FIELD_TIME]));
+	/* is insert? */
+	if(fields[FIELD_IS_DELETE][0] == '0') {
+	  EdgeInsertion * insertion = batch.add_insertions();
+
+	  if(use_strings) {
+	    insertion->set_source_str(fields[FIELD_SOURCE]);
+	    insertion->set_destination_str(fields[FIELD_DEST]);
+	  } else {
+	    insertion->set_source(atol(fields[FIELD_SOURCE]));
+	    insertion->set_destination(atol(fields[FIELD_DEST]));
+	  }
+
+	  if(count > 3) {
+	    insertion->set_weight(atol(fields[FIELD_WEIGHT]));
+	    if(count > 4) {
+	      insertion->set_time(atol(fields[FIELD_TIME]));
+	    }
+	  }
+
+	} else {
+	  EdgeDeletion * deletion = batch.add_deletions();
+
+	  if(use_strings) {
+	    deletion->set_source_str(fields[FIELD_SOURCE]);
+	    deletion->set_destination_str(fields[FIELD_DEST]);
+	  } else {
+	    deletion->set_source(atol(fields[FIELD_SOURCE]));
+	    deletion->set_destination(atol(fields[FIELD_DEST]));
+	  }
 	}
       }
 
-    } else {
-      EdgeDeletion * deletion = batch.add_deletions();
+      V("Sending messages.");
 
-      if(use_strings) {
-	deletion->set_source_str(fields[FIELD_SOURCE]);
-	deletion->set_destination_str(fields[FIELD_DEST]);
+      std::string out_buffer;
+
+      batch.SerializeToString(&out_buffer);
+
+      write(sock_handle, out_buffer.c_str(), out_buffer.size());
+
+      if((batch_num >= num_batches) && (num_batches == -1)) {
+	break;
       } else {
-	deletion->set_source(atol(fields[FIELD_SOURCE]));
-	deletion->set_destination(atol(fields[FIELD_DEST]));
+	batch_num++;
+      }
+    }
+
+    free(buffer);
+  } else {
+    char * line = NULL;
+    size_t line_len = 0;
+    rapidjson::Document d;
+
+    int batch_num = 0;
+
+    while(!feof(fp)) {
+      StingerBatch batch;
+      batch.set_make_undirected(true);
+      batch.set_type(STRINGS_ONLY);
+
+      for(int e = 0; e < batch_size && !feof(fp); e++) {
+	getline(&line, &line_len, fp);
+	d.Parse<0>(line);
+
+	if(!d.HasMember("delete")) {
+	  for(int m = 0; m < d["entities"]["user_mentions"].Size(); m++) {
+	    EdgeInsertion * insertion = batch.add_insertions();
+	    insertion->set_source_str(d["user"]["screen_name"].GetString());
+	    insertion->set_destination_str(d["entities"]["user_mentions"][m]["screen_name"].GetString());
+	    insertion->set_weight(1);
+	    insertion->set_time(twitter_timestamp(d["created_at"].GetString()));
+	  }
+	}
+      }
+
+      V("Sending messages.");
+
+      std::string out_buffer;
+
+      batch.SerializeToString(&out_buffer);
+
+      write(sock_handle, out_buffer.c_str(), out_buffer.size());
+
+      if((batch_num >= num_batches) && (num_batches == -1)) {
+	break;
+      } else {
+	batch_num++;
       }
     }
   }
-
-  V("Sending messages.");
-
-  std::string out_buffer;
-
-  batch.SerializeToString(&out_buffer);
-
-  write(sock_handle, out_buffer.c_str(), out_buffer.size());
-
-  free(buffer);
   return 0;
 }
