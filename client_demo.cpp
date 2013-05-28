@@ -1,6 +1,7 @@
 extern "C" {
 #include "stinger.h"
 #include "csv.h"
+#include "timer.h"
 }
 
 #include "stinger-batch.pb.h"
@@ -40,41 +41,41 @@ int64_t month(const char * month) {
   switch(month[0]) {
     case 'J': {
       if(month[1] == 'a') {
-	return 1;
+	return 0;
       } else if(month[2] == 'n') {
-	return 6;
+	return 151;
       } else {
-	return 7;
+	return 181;
       }
     } break;
     case 'F': {
-      return 2;
+      return 31;
     } break;
     case 'M': {
       if(month[2] == 'r') {
-        return 3;
+        return 59;
       } else {
-	return 5;
+	return 120;
       }
     } break;
     case 'A': {
       if(month[1] == 'p') {
-	return 4;
+	return 90;
       } else {
-	return 8;
+	return 212;
       }
     } break;
     case 'S': {
-      return 9;
+      return 242;
     } break;
     case 'O': {
-      return 10;
+      return 273;
     } break;
     case 'N': {
-      return 11;
+      return 304;
     } break;
     case 'D': {
-      return 12;
+      return 334;
     } break;
 
   }
@@ -112,10 +113,33 @@ twitter_timestamp(const char * time)
 	 CHAR2INT(time[18]);
 }
 
+int64_t
+since_month(const char * time)
+{
+  /*
+  Mon Sep 24 03:35:21 +0000 2012
+  012345678901234567890123456789
+  0         1         2
+  */
+  return 
+	 /* month */
+	 month(time + 4) *  86400 +
+	 /* day */
+	 (CHAR2INT(time[8]) * 10 + CHAR2INT(time[9])) * 86400 +
+	 /* hour */
+	 (CHAR2INT(time[11]) * 10 + CHAR2INT(time[12])) * 3600 +
+	 /* minute */
+	 (CHAR2INT(time[14]) * 10 + CHAR2INT(time[15])) * 60 + 
+	 /* second */
+	 (CHAR2INT(time[17]) * 10 + CHAR2INT(time[18]));
+}
+
 int
 main(int argc, char *argv[])
 {
   /* global options */
+  int64_t input_rate = 6;
+  int64_t output_rate = 1;
   int src_port = 10102;
   int dst_port = 10101;
   int batch_size = 100000;
@@ -128,7 +152,7 @@ main(int argc, char *argv[])
   char * filename;
 
   int opt = 0;
-  while(-1 != (opt = getopt(argc, argv, "p:b:d:a:sjx:y:"))) {
+  while(-1 != (opt = getopt(argc, argv, "p:b:d:a:sjx:y:i:o:"))) {
     switch(opt) {
       case 'p': {
 	src_port = atoi(optarg);
@@ -136,6 +160,14 @@ main(int argc, char *argv[])
 
       case 'd': {
 	dst_port = atoi(optarg);
+      } break;
+
+      case 'i': {
+	input_rate = atoi(optarg);
+      } break;
+
+      case 'o': {
+	output_rate = atoi(optarg);
       } break;
 
       case 'b': {
@@ -313,7 +345,12 @@ main(int argc, char *argv[])
 
     int batch_num = 0;
 
+    int64_t batch_start = 0;
+
+    tic();
+
     while(!feof(fp)) {
+
       V("Parsing messages.");
 
       rapidjson::Document d;
@@ -321,10 +358,18 @@ main(int argc, char *argv[])
       batch.set_make_undirected(true);
       batch.set_type(STRINGS_ONLY);
 
-      for(int e = 0; (e < batch_size) && !feof(fp); e++) {
+      int64_t tweet_time = 0;
+      int64_t e = 0;
+      V_A("%ld %ld %ld", batch_num, batch_start, tweet_time);
+
+      for(; (tweet_time - batch_start) < input_rate && !feof(fp); e++) {
 	getline(&line, &line_len, fp);
 	try {
 	  d.Parse<0>(line);
+	  tweet_time = since_month(d["created_at"].GetString());
+
+	  if(!batch_start)
+	    batch_start = tweet_time;
 
 	  if(!d.HasMember("delete")) {
 	    for(int m = 0; m < d["entities"]["user_mentions"].Size(); m++) {
@@ -332,7 +377,7 @@ main(int argc, char *argv[])
 	      insertion->set_source_str(d["user"]["screen_name"].GetString());
 	      insertion->set_destination_str(d["entities"]["user_mentions"][m]["screen_name"].GetString());
 	      insertion->set_weight(1);
-	      insertion->set_time(twitter_timestamp(d["created_at"].GetString()));
+	      insertion->set_time(tweet_time);
 	    }
 	  }
 	} catch (std::exception e) {
@@ -340,14 +385,25 @@ main(int argc, char *argv[])
 	}
       }
 
-      V("Sending messages.");
+      batch_start = tweet_time;
+      V_A("%ld %ld %ld", batch_num, batch_start, tweet_time);
+
+      V_A("Sending %ld tweets.", e);
       //batch.PrintDebugString();
 
       std::string out_buffer;
 
       batch.SerializeToString(&out_buffer);
 
-      printf("\n\tSending size %d\n", out_buffer.size());
+      int64_t micro = output_rate * 1000000 - toc();
+      if(micro > 0) {
+	V_A("Sleeping for %ld", micro);
+	usleep(micro);
+      } else {
+	E_A("Can't keep up! %ld", micro);
+      }
+
+      V_A("Sending size %d", out_buffer.size());
 
       int64_t len = out_buffer.size();
       write(sock_handle, &len, sizeof(int64_t));
