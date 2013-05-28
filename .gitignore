@@ -13,3 +13,21 @@
 *.lai
 *.la
 *.a
+
+# Built
+.libs/
+.deps/
+autom4te.cache/
+config.log
+config.status
+
+# Specific built files, not sure where else these may appear
+lib/protobuf-2.5.0/Makefile
+lib/protobuf-2.5.0/Makefile.in
+lib/protobuf-2.5.0/src/Makefile
+lib/protobuf-2.5.0/src/Makefile.in
+lib/protobuf-2.5.0/gtest/Makefile
+lib/protobuf-2.5.0/gtest/Makefile.in
+lib/protobuf-2.5.0/config.h
+lib/protobuf-2.5.0/protobuf-lite.pc
+lib/protobuf-2.5.0/protobuf.pc
