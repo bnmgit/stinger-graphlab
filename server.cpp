@@ -6,11 +6,23 @@ extern "C" {
 
 #include "stinger-batch.pb.h"
 
+#if !defined(MTA)
+#define MTA(x)
+#endif
+
+#if defined(__GNUC__)
+#define FN_MAY_BE_UNUSED __attribute__((unused))
+#else
+#define FN_MAY_BE_UNUSED
+#endif
+
 #include <cstdio>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+
+#include <vector>
 
 using namespace gt::stinger;
 
@@ -22,6 +34,96 @@ components_batch(struct stinger * S, int64_t nv, int64_t * component_map);
 
 #define V_A(X,...) fprintf(stdout, "%s %s %d:\n\t" #X "\n", __FILE__, __func__, __LINE__, __VA_ARGS__);
 #define V(X) V_A(X,NULL)
+
+static inline int64_t
+int64_fetch_add (int64_t * p, int64_t incr) FN_MAY_BE_UNUSED;
+static inline int
+bool_int64_compare_and_swap (int64_t * p, int64_t oldval, int64_t newval)
+  FN_MAY_BE_UNUSED;
+
+MTA("mta inline") MTA("mta expect parallel")
+int64_t
+int64_fetch_add (int64_t * p, int64_t incr)
+{
+#if defined(__MTA__)
+  return int_fetch_add (p, incr);
+#elif defined(_OPENMP)
+#if defined(__GNUC__)
+  return __sync_fetch_and_add (p, incr);
+#elif defined(__INTEL_COMPILER)
+  return __sync_fetch_and_add (p, incr);
+#else
+#error "Atomics not defined..."
+#endif
+#else
+  int64_t out = *p;
+  *p += incr;
+  return out;
+#endif
+}
+
+MTA("mta inline") MTA("mta expect parallel")
+int
+bool_int64_compare_and_swap (int64_t * p, int64_t oldval, int64_t newval)
+{
+#if defined(__MTA__)
+  int64_t t = *p;
+  if (t == oldval) {
+    int64_t t;
+    t = readfe (p);
+    if (t == oldval) {
+      writeef (p, newval);
+    } else {
+      writeef (p, oldval);
+    }
+  }
+  return t == oldval;
+#elif defined(_OPENMP)&&(defined(__GNUC__)||defined(__INTEL_COMPILER))
+  return __sync_bool_compare_and_swap (p, oldval, newval);
+#elif defined(_OPENMP)
+#error "Atomics not defined..."
+#else
+  int64_t t = *p;
+  if (t == oldval) *p = newval;
+  return t == oldval;
+#endif
+}
+
+MTA("mta inline") MTA("mta expect parallel context")
+static inline int
+append_to_vlist (int64_t * restrict nvlist,
+                 int64_t * restrict vlist,
+                 int64_t * restrict mark /* |V|, init to -1 */,
+                 const int64_t i)
+{
+  int out = 0;
+  if (mark[i] < 0) {
+    int64_t where;
+    int64_t marki;
+#if defined(__MTA__)
+    marki = readfe (&mark[i]);
+#else
+    marki = mark[i];
+#endif
+    if (marki == -1) { /* Superfluous test sequentially */
+      if (bool_int64_compare_and_swap (&mark[i], -1, -2)) {
+        /* Own it. */
+        where = int64_fetch_add (nvlist, 1);
+        marki = where;
+        vlist[where] = i;
+        out = 1;
+#if !defined(__MTA__)
+        mark[i] = where;
+#endif
+      }
+    }
+#if defined(__MTA__)
+    writeef (&mark[i], marki);
+#endif
+  }
+
+  return out;
+}
 
 /**
 * @brief Inserts and removes the edges contained in a batch.
@@ -35,29 +137,42 @@ components_batch(struct stinger * S, int64_t nv, int64_t * component_map);
 * @return 0 on success.
 */
 int
-process_batch(stinger_t * S, StingerBatch & batch) {
+process_batch(stinger_t * S, StingerBatch & batch,
+	      int64_t * nvlist, int64_t * restrict vlist,
+	      int64_t * restrict mark)
+{
+
+  *nvlist = 0;
 
   switch(batch.type()) {
 
-    case NUMBERS_ONLY: {
+    case NUMBERS_ONLY: OMP("omp parallel") {
 
-      OMP("omp parallel for")
+      OMP("omp for nowait")
       for(int i = 0; i < batch.insertions_size(); i++) {
 	const EdgeInsertion & in = batch.insertions(i);
-	stinger_incr_edge_pair(S, in.type(), in.source(), in.destination(), in.weight(), in.time());
+	const int64_t u = in.source ();
+	const int64_t v = in.destination ();
+	stinger_incr_edge_pair(S, in.type(), u, v, in.weight(), in.time());
+	append_to_vlist (nvlist, vlist, mark, u);
+	append_to_vlist (nvlist, vlist, mark, v);
       }
 
-      OMP("omp parallel for")
+      OMP("omp for")
       for(int d = 0; d < batch.deletions_size(); d++) {
 	const EdgeDeletion & del = batch.deletions(d);
+	const int64_t u = del.source ();
+	const int64_t v = del.destination ();
 	stinger_remove_edge_pair(S, del.type(), del.source(), del.destination());
+	append_to_vlist (nvlist, vlist, mark, u);
+	append_to_vlist (nvlist, vlist, mark, v);
       }
 
     } break;
 
-    case STRINGS_ONLY: {
+    case STRINGS_ONLY: OMP("omp parallel") {
 
-      OMP("omp parallel for")
+      OMP("omp for nowait")
       for(int i = 0; i < batch.insertions_size(); i++) {
 	const EdgeInsertion & in = batch.insertions(i);
 	int64_t src, dest;
@@ -65,17 +180,22 @@ process_batch(stinger_t * S, StingerBatch & batch) {
 	stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &dest);
 
 	stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
+	append_to_vlist (nvlist, vlist, mark, src);
+	append_to_vlist (nvlist, vlist, mark, dest);
       }
 
-      OMP("omp parallel for")
+      OMP("omp for")
       for(int d = 0; d < batch.deletions_size(); d++) {
 	const EdgeDeletion & del = batch.deletions(d);
 	int64_t src, dest;
 	src = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
 	dest = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
 
-	if(src != -1 && dest != -1)
+	if(src != -1 && dest != -1) {
 	  stinger_remove_edge_pair(S, del.type(), src, dest);
+	  append_to_vlist (nvlist, vlist, mark, src);
+	  append_to_vlist (nvlist, vlist, mark, dest);
+	}
       }
 
     } break;
@@ -100,6 +220,8 @@ process_batch(stinger_t * S, StingerBatch & batch) {
 	}
 
 	stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
+	append_to_vlist (nvlist, vlist, mark, src);
+	append_to_vlist (nvlist, vlist, mark, dest);
       }
 
       OMP("omp parallel for")
@@ -119,8 +241,11 @@ process_batch(stinger_t * S, StingerBatch & batch) {
 	  dest = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
 	}
 
-	if(src != -1 && dest != -1)
+	if(src != -1 && dest != -1) {
 	  stinger_remove_edge_pair(S, del.type(), src, dest);
+	  append_to_vlist (nvlist, vlist, mark, src);
+	  append_to_vlist (nvlist, vlist, mark, dest);
+	}
       }
     } break;
   }
@@ -195,6 +320,14 @@ main(int argc, char *argv[])
   int64_t * communities = (int64_t *)xmalloc(sizeof(int64_t) * STINGER_MAX_LVERTICES);
   double * centralities = (double *)xmalloc(sizeof(double) * STINGER_MAX_LVERTICES);
 
+  int64_t * mark = (int64_t*) xmalloc (sizeof (*mark) * STINGER_MAX_LVERTICES);
+  int64_t nvlist = 0;
+  int64_t * vlist = (int64_t*) xmalloc (sizeof (*mark) * STINGER_MAX_LVERTICES);
+
+  OMP("omp parallel for")
+    for (int64_t k = 0; k < STINGER_MAX_LVERTICES; ++k)
+      mark[k] = -1;
+
   web_set_label_container("ConnectedComponentIDs", components);
   web_set_label_container("CommunityIDs", communities);
   web_set_score_container("BetweennessCentralities", centralities);
@@ -228,9 +361,13 @@ main(int argc, char *argv[])
 
 	  //batch.PrintDebugString();
 
-	  process_batch(S, batch);
+	  process_batch(S, batch, &nvlist, vlist, mark);
 
 	  components_batch(S, STINGER_MAX_LVERTICES, components);
+
+	  OMP("omp parallel for")
+	    for (int64_t k = 0; k < nvlist; ++k)
+	      mark[vlist[k]] = -1;
 	}
 
 	buffer -= sizeof(int64_t);
