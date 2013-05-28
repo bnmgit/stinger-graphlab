@@ -651,15 +651,15 @@ stinger_workflow_write_named_results(stinger_workflow_t * workflow, char * path,
       switch (workflow->named_results[n]->type) {
 	default :
 	case NR_I64:
-	  csvIfIDExistsint64(fp, ',', workflow->S, NULL, stinger_vertices_max_vertices_get(stinger_vertices_get(workflow->S)), (int64_t *)workflow->named_results[n]->data);
+	  csvIfIDExistsint64(fp, ',', workflow->S, stinger_vertices_max_vertices_get(stinger_vertices_get(workflow->S)), (int64_t *)workflow->named_results[n]->data);
 	break;
 
 	case NR_DBL:
-	  csvIfIDExistsdouble(fp, ',', workflow->S, NULL, stinger_vertices_max_vertices_get(stinger_vertices_get(workflow->S)), (double *)workflow->named_results[n]->data);
+	  csvIfIDExistsdouble(fp, ',', workflow->S, stinger_vertices_max_vertices_get(stinger_vertices_get(workflow->S)), (double *)workflow->named_results[n]->data);
 	break;
 
 	case NR_U8:
-	  csvIfIDExistsint8(fp, ',', workflow->S, NULL, stinger_vertices_max_vertices_get(stinger_vertices_get(workflow->S)), workflow->named_results[n]->data);
+	  csvIfIDExistsint8(fp, ',', workflow->S, stinger_vertices_max_vertices_get(stinger_vertices_get(workflow->S)), workflow->named_results[n]->data);
 	break;
 
 	case NR_I64PAIRS:

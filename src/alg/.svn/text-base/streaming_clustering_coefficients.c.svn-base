@@ -263,7 +263,7 @@ streaming_clustering_coefficients_init(stinger_t * S, stinger_workflow_t * wkflo
   count_all_triangles(S, ws->nv, ws->ntri);
 
   int64_t global_degsum = 0;
-  OMP("omp parallel for")
+  OMP("omp parallel for reduction(+:global_degsum)")
   MTA("mta assert nodep")
   for (int64_t i = 0; i < ws->nv; i++) {
     int64_t deg = stinger_outdegree_get(S,i);
@@ -411,7 +411,7 @@ streaming_clustering_coefficients_after_batch(stinger_t * S, stinger_workflow_t 
   }
 
   uint64_t global_degsum = 0;
-  OMP("omp parallel for")
+  OMP("omp parallel for reduction(+:global_degsum)")
   MTA("mta assert nodep")
   for (int64_t i = 0; i < ws->nv; i++) {
     int64_t deg = stinger_outdegree_get(S, i);

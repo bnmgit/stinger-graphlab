@@ -98,6 +98,8 @@ struct stinger
 #if !defined(STINGER_FORCE_OLD_MAP)
   stinger_physmap_t   *	physmap;
 #endif
+  stinger_names_t * etype_names;
+  stinger_names_t * vtype_names;
   struct stinger_etype_array *ETA;  /**< One edge type array for each edge type, specified at compile time */
   struct stinger_ebpool * ebpool;
 };

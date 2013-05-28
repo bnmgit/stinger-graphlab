@@ -19,15 +19,15 @@ void
 printLine(char ** fields, uint64_t * lengths, uint64_t count);
 
 void
-csvIfIDExistsint8(FILE * fp, char delim, struct stinger * S, const char ** type_strings, uint64_t nv, int8_t * values);
+csvIfIDExistsint8(FILE * fp, char delim, struct stinger * S, uint64_t nv, int8_t * values);
 
 void
-csvIfIDExistsint64(FILE * fp, char delim, struct stinger * s, const char ** type_strings, uint64_t nv, int64_t * values);
+csvIfIDExistsint64(FILE * fp, char delim, struct stinger * s, uint64_t nv, int64_t * values);
 
 void
-csvIfIDExistsfloat(FILE * fp, char delim, struct stinger * s, const char ** type_strings, uint64_t nv, float * values);
+csvIfIDExistsfloat(FILE * fp, char delim, struct stinger * s, uint64_t nv, float * values);
 
 void
-csvIfIDExistsdouble(FILE * fp, char delim, struct stinger * s, const char ** type_strings, uint64_t nv, double * values);
+csvIfIDExistsdouble(FILE * fp, char delim, struct stinger * s, uint64_t nv, double * values);
 
 #endif  /*CSV_H*/

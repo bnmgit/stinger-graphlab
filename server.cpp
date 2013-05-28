@@ -195,21 +195,41 @@ main(int argc, char *argv[])
   components_init(S, STINGER_MAX_LVERTICES, components);
 
   while(1) {
-    V("Ready to accept messages.");
-
     int accept_handle = accept(sock_handle, NULL, NULL);
-    ssize_t bytes_received = recv(accept_handle, buffer, buffer_size, 0);
 
-    V_A("Received message of size %ld", (long)bytes_received);
-    if(bytes_received > 0) {
-      StingerBatch batch;
-      batch.ParseFromString((const char *)buffer);
+    V("Ready to accept messages.");
+    while(1) {
 
-      //batch.PrintDebugString();
+      ssize_t bytes_received = 0;
 
-      process_batch(S, batch);
+      while(bytes_received < sizeof(int64_t))
+	bytes_received += recv(accept_handle, buffer, sizeof(int64_t) - bytes_received, 0);
 
-      components_batch(S, STINGER_MAX_LVERTICES, components);
+      int64_t message_size = *((int64_t *)buffer);
+      if(message_size != -1) {
+	buffer += sizeof(int64_t);
+
+	bytes_received = 0;
+
+	while(bytes_received < sizeof(int64_t))
+	  bytes_received += recv(accept_handle, buffer, message_size - bytes_received, 0);
+
+	V_A("Received message of size %ld", (long)message_size);
+	StingerBatch batch;
+
+	if(batch.ParseFromString((const char *)buffer)) {
+
+	  //batch.PrintDebugString();
+
+	  process_batch(S, batch);
+
+	  components_batch(S, STINGER_MAX_LVERTICES, components);
+	}
+
+	buffer -= sizeof(int64_t);
+      } else {
+	break;
+      }
     }
   }
 
@@ -239,11 +259,11 @@ components_batch(struct stinger * S, int64_t nv, int64_t * component_map) {
       STINGER_PARALLEL_FORALL_EDGES_BEGIN (S, t) {
       if (component_map[STINGER_EDGE_DEST] <
           component_map[STINGER_EDGE_SOURCE]) {
-        component_map[STINGER_EDGE_SOURCE] = component_map[STINGER_EDGE_DEST];
-        changed++;
+	  component_map[STINGER_EDGE_SOURCE] = component_map[STINGER_EDGE_DEST];
+	  changed++;
+	}
       }
-    }
-    STINGER_PARALLEL_FORALL_EDGES_END ();
+      STINGER_PARALLEL_FORALL_EDGES_END ();
     }
 
     /* if nothing changed */

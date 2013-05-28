@@ -293,7 +293,9 @@ main(int argc, char *argv[])
 
       batch.SerializeToString(&out_buffer);
 
-      write(sock_handle, out_buffer.c_str(), out_buffer.size());
+      int64_t len = out_buffer.size();
+      write(sock_handle, &len, sizeof(int64_t));
+      write(sock_handle, out_buffer.c_str(), len);
 
       if((batch_num >= num_batches) && (num_batches == -1)) {
 	break;
@@ -302,7 +304,8 @@ main(int argc, char *argv[])
       }
     }
 
-    free(buffer);
+    int64_t len = -1;
+    write(sock_handle, &len, sizeof(int64_t));
   } else {
     char * line = NULL;
     size_t line_len = 0;
@@ -339,7 +342,11 @@ main(int argc, char *argv[])
 
       batch.SerializeToString(&out_buffer);
 
-      write(sock_handle, out_buffer.c_str(), out_buffer.size());
+      printf("\n\tSending size %d\n", out_buffer.size());
+
+      int64_t len = out_buffer.size();
+      write(sock_handle, &len, sizeof(int64_t));
+      write(sock_handle, out_buffer.c_str(), len);
 
       if((batch_num >= num_batches) && (num_batches != -1)) {
 	break;
@@ -347,6 +354,11 @@ main(int argc, char *argv[])
 	batch_num++;
       }
     }
+
+    int64_t len = -1;
+    write(sock_handle, &len, sizeof(int64_t));
   }
+
+  free(buffer);
   return 0;
 }

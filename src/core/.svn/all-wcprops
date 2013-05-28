@@ -1,7 +1,19 @@
 K 25
 svn:wc:ra_dav:version-url
 V 50
-/graphs/!svn/ver/576/stinger/branches/rad/src/core
+/graphs/!svn/ver/598/stinger/branches/rad/src/core
+END
+stinger.c
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/graphs/!svn/ver/598/stinger/branches/rad/src/core/stinger.c
+END
+stinger-names.c
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/graphs/!svn/ver/598/stinger/branches/rad/src/core/stinger-names.c
 END
 stinger-iterator.c
 K 25
@@ -13,13 +25,13 @@ stinger-workflow.c
 K 25
 svn:wc:ra_dav:version-url
 V 69
-/graphs/!svn/ver/569/stinger/branches/rad/src/core/stinger-workflow.c
+/graphs/!svn/ver/598/stinger/branches/rad/src/core/stinger-workflow.c
 END
 stinger-vertex.c
 K 25
 svn:wc:ra_dav:version-url
 V 67
-/graphs/!svn/ver/576/stinger/branches/rad/src/core/stinger-vertex.c
+/graphs/!svn/ver/598/stinger/branches/rad/src/core/stinger-vertex.c
 END
 stinger-return.c
 K 25
@@ -38,10 +50,4 @@ K 25
 svn:wc:ra_dav:version-url
 V 68
 /graphs/!svn/ver/576/stinger/branches/rad/src/core/stinger-physmap.c
-END
-stinger.c
-K 25
-svn:wc:ra_dav:version-url
-V 60
-/graphs/!svn/ver/576/stinger/branches/rad/src/core/stinger.c
 END

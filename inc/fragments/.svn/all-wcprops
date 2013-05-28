@@ -1,13 +1,19 @@
 K 25
 svn:wc:ra_dav:version-url
 V 59
-/graphs/!svn/ver/584/stinger/branches/rad/include/fragments
+/graphs/!svn/ver/598/stinger/branches/rad/include/fragments
 END
 vquery.html
 K 25
 svn:wc:ra_dav:version-url
 V 71
 /graphs/!svn/ver/584/stinger/branches/rad/include/fragments/vquery.html
+END
+subgraph.html
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/graphs/!svn/ver/598/stinger/branches/rad/include/fragments/subgraph.html
 END
 vquery.html.h
 K 25
