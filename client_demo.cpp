@@ -5,6 +5,7 @@ extern "C" {
 
 #include "stinger-batch.pb.h"
 
+#define RAPIDJSON_ASSERT(X) if (!(X)) { throw std::exception(); }
 #include "rapidjson/document.h"
 #include "rapidjson/filestream.h"
 #include "rapidjson/prettywriter.h"
@@ -322,16 +323,20 @@ main(int argc, char *argv[])
 
       for(int e = 0; (e < batch_size) && !feof(fp); e++) {
 	getline(&line, &line_len, fp);
-	d.Parse<0>(line);
+	try {
+	  d.Parse<0>(line);
 
-	if(!d.HasMember("delete")) {
-	  for(int m = 0; m < d["entities"]["user_mentions"].Size(); m++) {
-	    EdgeInsertion * insertion = batch.add_insertions();
-	    insertion->set_source_str(d["user"]["screen_name"].GetString());
-	    insertion->set_destination_str(d["entities"]["user_mentions"][m]["screen_name"].GetString());
-	    insertion->set_weight(1);
-	    insertion->set_time(twitter_timestamp(d["created_at"].GetString()));
+	  if(!d.HasMember("delete")) {
+	    for(int m = 0; m < d["entities"]["user_mentions"].Size(); m++) {
+	      EdgeInsertion * insertion = batch.add_insertions();
+	      insertion->set_source_str(d["user"]["screen_name"].GetString());
+	      insertion->set_destination_str(d["entities"]["user_mentions"][m]["screen_name"].GetString());
+	      insertion->set_weight(1);
+	      insertion->set_time(twitter_timestamp(d["created_at"].GetString()));
+	    }
 	  }
+	} catch (std::exception e) {
+	  /* pass */
 	}
       }
 

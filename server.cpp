@@ -133,6 +133,13 @@ main(int argc, char *argv[])
 {
   struct stinger * S = stinger_new();
 
+  /* register edge and vertex types */
+  int64_t vtype_twitter_handle;
+  stinger_vtype_names_create_type(S, "TwitterHandle", &vtype_twitter_handle);
+
+  int64_t etype_mention;
+  stinger_vtype_names_create_type(S, "Mention", &etype_mention);
+
   web_start_stinger(S, "8088");
 
   /* global options */
