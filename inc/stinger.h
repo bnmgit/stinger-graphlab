@@ -6,6 +6,7 @@
 #include "stinger-config.h"
 #include "stinger-physmap.h"
 #include "stinger-vertex.h"
+#include "stinger-names.h"
 #include "stinger-defs.h"
 
 /* User-accessible data structures */
@@ -108,6 +109,12 @@ stinger_physmap_t *
 stinger_physmap_get(const stinger_t * S);
 #endif
 
+stinger_names_t *
+stinger_vtype_names_get(const stinger_t * S);
+
+stinger_names_t *
+stinger_etype_names_get(const stinger_t * S);
+
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ * 
  * VERTEX METADATA
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -180,7 +187,36 @@ stinger_mapping_physid_get(const stinger_t * S, vindex_t vertexID, char ** outbu
 
 int
 stinger_mapping_physid_direct(const stinger_t * S, vindex_t vertexID, char ** out_ptr, uint64_t * out_len);
+
+vindex_t
+stinger_mapping_nv(const stinger_t * S);
 #endif
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
+ * VTYPE NAMES
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int
+stinger_vtype_names_create_type(stinger_t * S, char * name, int64_t * out);
+
+int64_t
+stinger_vtype_names_lookup_type(const stinger_t * S, char * name);
+
+char *
+stinger_vtype_names_lookup_name(const stinger_t * S, int64_t type);
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
+ * ETYPE NAMES
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int
+stinger_etype_names_create_type(stinger_t * S, char * name, int64_t * out);
+
+int64_t
+stinger_etype_names_lookup_type(const stinger_t * S, char * name);
+
+char *
+stinger_etype_names_lookup_name(const stinger_t * S, int64_t type);
 
 uint64_t stinger_max_active_vertex(const struct stinger * S);
 

@@ -1,12 +1,12 @@
 include make.inc
 
 #CORE
-STINGER_CORE	= stinger.c stinger-deprecated.c stinger-iterator.c stinger-physmap.c stinger-return.c stinger-vertex.c stinger-workflow.c 
+STINGER_CORE	= stinger.c stinger-deprecated.c stinger-iterator.c stinger-physmap.c stinger-return.c stinger-vertex.c stinger-workflow.c stinger-names.c
 STINGER_CORE_SRC= $(addprefix src/core/, $(STINGER_CORE))
 STINGER_CORE_OBJ= $(subst src,obj,$(subst .c,.o,$(STINGER_CORE_SRC)))
 
 #UTIL
-STINGER_UTIL	= csv.c histogram.c stinger-utils.c timer.c x86-full-empty.c xmalloc.c x86-full-empty.c graph_construct.c
+STINGER_UTIL	= csv.c histogram.c stinger-utils.c timer.c x86-full-empty.c xmalloc.c x86-full-empty.c graph_construct.c web.c json-support.c
 STINGER_UTIL_SRC= $(addprefix src/util/, $(STINGER_UTIL))
 STINGER_UTIL_OBJ= $(subst src,obj,$(subst .c,.o,$(STINGER_UTIL_SRC)))
 
@@ -21,13 +21,13 @@ STINGER_STREAM_SRC	= $(addprefix src/stream/, $(STINGER_STREAM))
 STINGER_STREAM_OBJ	= $(subst src,obj,$(subst .c,.o,$(STINGER_STREAM_SRC)))
 
 #LIB
-STINGER_LIB	= mongoose/mongoose.c int-hm-seq/src/int-hm-seq.c string/src/astring.c fmemopen/src/fmemopen.c int-ht-seq/src/int-ht-seq.c
+STINGER_LIB	= mongoose/mongoose.c int-hm-seq/src/int-hm-seq.c string/src/astring.c fmemopen/src/fmemopen.c int-ht-seq/src/int-ht-seq.c kv_store/src/kv_store.c
 STINGER_LIB_SRC	= $(addprefix lib/,$(STINGER_LIB))
 STINGER_LIB_OBJ	= $(subst src,obj,$(subst .c,.o,$(STINGER_LIB_SRC)))
-STINGER_LIB_INCLUDE = -Ilib/mongoose -Ilib/string/inc -Ilib/fmemopen/inc -Ilib/int-ht-seq/inc -Ilib/int-hm-seq/inc -Ilib/rapidjson/include
+STINGER_LIB_INCLUDE = -Ilib/mongoose -Ilib/string/inc -Ilib/fmemopen/inc -Ilib/int-ht-seq/inc -Ilib/int-hm-seq/inc -Ilib/rapidjson/include -Ilib/kv_store/inc
 
 #FRAGMENTS - text files to be embedded as a string via a header
-FRAGMENT     = vquery.html
+FRAGMENT     = 
 FRAGMENT_SRC = $(addprefix inc/fragments/,$(FRAGMENT))
 FRAGMENT_OBJ = $(addsuffix .h,$(FRAGMENT_SRC))
 

@@ -211,124 +211,68 @@ printLine(char ** fields, uint64_t * lengths, uint64_t count) {
 }
 
 void
-csvIfIDExistsint8(FILE * fp, char delim, struct stinger * S, const char ** type_strings, uint64_t nv, int8_t * values) {
-  if(type_strings) {
+csvIfIDExistsint8(FILE * fp, char delim, struct stinger * S, uint64_t nv, int8_t * values) {
     for(uint64_t v = 0; v < nv; v++) {
       if(stinger_vtype_get(S, v) != 0) {
 	uint64_t len;
 	char * name;
 	stinger_mapping_physid_direct(S, v, &name, &len);
+      char * type = stinger_vtype_names_lookup_name(S, stinger_vtype_get(S, v));
 	if(len && name) {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, (int)len, name, delim, type_strings[stinger_vtype(S,v)], delim, stinger_vtype(S,v), delim, (long)values[v]);
+	fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, (int)len, name, delim, type ? type : "", delim, stinger_vtype(S,v), delim, (long)values[v]);
 	} else {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, 0, "", delim, type_strings[stinger_vtype(S,v)], delim, stinger_vtype(S,v), delim, (long)values[v]);
-	}
-      }
-    }
-  } else {
-    for(uint64_t v = 0; v < nv; v++) {
-      if(stinger_vtype_get(S, v) != 0) {
-	uint64_t len;
-	char * name;
-	stinger_mapping_physid_direct(S, v, &name, &len);
-	if(len && name) {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, (int)len, name, delim, "", delim, stinger_vtype(S,v), delim, values[v]);
-	} else {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, 0, "", delim, "", delim, stinger_vtype(S,v), delim, values[v]);
-	}
+	fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, 0, "", delim, type ? type : "", delim, stinger_vtype(S,v), delim, (long)values[v]);
       }
     }
   }
 }
 
 void
-csvIfIDExistsint64(FILE * fp, char delim, struct stinger * S, const char ** type_strings, uint64_t nv, int64_t * values) {
-  if(type_strings) {
+csvIfIDExistsint64(FILE * fp, char delim, struct stinger * S, uint64_t nv, int64_t * values) {
     for(uint64_t v = 0; v < nv; v++) {
       if(stinger_vtype_get(S, v) != 0) {
 	uint64_t len;
 	char * name;
 	stinger_mapping_physid_direct(S, v, &name, &len);
+      char * type = stinger_vtype_names_lookup_name(S, stinger_vtype_get(S, v));
 	if(len && name) {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, (int)len, name, delim, type_strings[stinger_vtype(S,v)], delim, stinger_vtype(S,v), delim, values[v]);
+	fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, (int)len, name, delim, type ? type : "", delim, stinger_vtype(S,v), delim, values[v]);
 	} else {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, 0, "", delim, type_strings[stinger_vtype(S,v)], delim, stinger_vtype(S,v), delim, values[v]);
-	}
-      }
-    }
-  } else {
-    for(uint64_t v = 0; v < nv; v++) {
-      if(stinger_vtype_get(S, v) != 0) {
-	uint64_t len;
-	char * name;
-	stinger_mapping_physid_direct(S, v, &name, &len);
-	if(len && name) {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, (int)len, name, delim, "", delim, stinger_vtype(S,v), delim, values[v]);
-	} else {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, 0, "", delim, "", delim, stinger_vtype(S,v), delim, values[v]);
-	}
+	fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%ld\n", v, delim, 0, "", delim, type ? type : "", delim, stinger_vtype(S,v), delim, values[v]);
       }
     }
   }
 }
 
 void
-csvIfIDExistsfloat(FILE * fp, char delim, struct stinger * S, const char ** type_strings, uint64_t nv, float * values) {
-  if(type_strings) {
+csvIfIDExistsfloat(FILE * fp, char delim, struct stinger * S, uint64_t nv, float * values) {
     for(uint64_t v = 0; v < nv; v++) {
       if(stinger_vtype_get(S, v) != 0) {
 	uint64_t len;
 	char * name;
 	stinger_mapping_physid_direct(S, v, &name, &len);
+      char * type = stinger_vtype_names_lookup_name(S, stinger_vtype_get(S, v));
 	if(len && name) {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%f\n", v, delim, (int)len, name, delim, type_strings[stinger_vtype(S,v)], delim, stinger_vtype(S,v), delim, values[v]);
+	fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%f\n", v, delim, (int)len, name, delim, type ? type : "", delim, stinger_vtype(S,v), delim, values[v]);
 	} else {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%f\n", v, delim, 0, "", delim, type_strings[stinger_vtype(S,v)], delim, stinger_vtype(S,v), delim, values[v]);
-	}
-      }
-    }
-  } else {
-    for(uint64_t v = 0; v < nv; v++) {
-      if(stinger_vtype_get(S, v) != 0) {
-	uint64_t len;
-	char * name;
-	stinger_mapping_physid_direct(S, v, &name, &len);
-	if(len && name) {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%f\n", v, delim, (int)len, name, delim, "", delim, stinger_vtype(S,v), delim, values[v]);
-	} else {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%f\n", v, delim, 0, "", delim, "", delim, stinger_vtype(S,v), delim, values[v]);
-	}
+	fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%f\n", v, delim, 0, "", delim, type ? type : "", delim, stinger_vtype(S,v), delim, values[v]);
       }
     }
   }
 }
 
 void
-csvIfIDExistsdouble(FILE * fp, char delim, struct stinger * S, const char ** type_strings, uint64_t nv, double * values) {
-  if(type_strings) {
+csvIfIDExistsdouble(FILE * fp, char delim, struct stinger * S, uint64_t nv, double * values) {
     for(uint64_t v = 0; v < nv; v++) {
       if(stinger_vtype_get(S, v) != 0) {
 	uint64_t len;
 	char * name;
+      char * type = stinger_vtype_names_lookup_name(S, stinger_vtype_get(S, v));
 	stinger_mapping_physid_direct(S, v, &name, &len);
 	if(len && name) {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%lf\n", v, delim, (int)len, name, delim, type_strings[stinger_vtype(S,v)], delim, stinger_vtype(S,v), delim, values[v]);
+	fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%lf\n", v, delim, (int)len, name, delim, type ? type : "", delim, stinger_vtype(S,v), delim, values[v]);
 	} else {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%lf\n", v, delim, 0, "", delim, type_strings[stinger_vtype(S,v)], delim, stinger_vtype(S,v), delim, values[v]);
-	}
-      }
-    }
-  } else {
-    for(uint64_t v = 0; v < nv; v++) {
-      if(stinger_vtype_get(S, v) != 0) {
-	uint64_t len;
-	char * name;
-	stinger_mapping_physid_direct(S, v, &name, &len);
-	if(len && name) {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%lf\n", v, delim, (int)len, name, delim, "", delim, stinger_vtype(S,v), delim, values[v]);
-	} else {
-	  fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%lf\n", v, delim, 0, "", delim, "", delim, stinger_vtype(S,v), delim, values[v]);
-	}
+	fprintf(fp, "%ld%c%.*s%c%s%c%ld%c%lf\n", v, delim, 0, "", delim, type ? type : "", delim, stinger_vtype(S,v), delim, values[v]);
       }
     }
   }

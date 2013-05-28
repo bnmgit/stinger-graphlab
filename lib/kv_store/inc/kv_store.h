@@ -379,4 +379,7 @@ kv_error_string(kv_return_t rtn);
 kv_return_t
 kv_from_ini(FILE * ini, kv_element_t * tracker, kv_element_t ** top_level);
 
+kv_return_t
+kv_from_args(int argc, char ** argv, kv_element_t * tracker, kv_element_t ** top_level);
+
 #endif  /*KV_STORE_H*/

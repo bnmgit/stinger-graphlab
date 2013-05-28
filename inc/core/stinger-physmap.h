@@ -3,19 +3,14 @@
 
 #include <stdio.h>
 #include "stinger-config.h"
+#include "stinger-names.h"
 
 #if !defined(STINGER_FORCE_OLD_MAP)
 
 typedef struct physID {
-  int64_t   index;
-  uint16_t  length;
 } physID_t;
 
-typedef struct stinger_physmap {
-  int64_t top;
-  int64_t size;
-  uint8_t storage[0];
-} stinger_physmap_t;
+typedef stinger_names_t stinger_physmap_t;
 
 #include "stinger-vertex.h"
 
@@ -37,8 +32,11 @@ stinger_physmap_id_get(stinger_physmap_t * p, stinger_vertices_t * v, vindex_t v
 int
 stinger_physmap_id_direct(stinger_physmap_t * p, stinger_vertices_t * v, vindex_t vertexID, char ** out_ptr, int64_t * out_len);
 
+int64_t
+stinger_physmap_nv(stinger_physmap_t * p);
+
 void
-stinger_physmap_id_to_json(const stinger_physmap_t * p, const physID_t * id, FILE * out, int64_t indent_level);
+stinger_physmap_id_to_json(const stinger_physmap_t * p, vindex_t v, FILE * out, int64_t indent_level);
 
 #endif
 

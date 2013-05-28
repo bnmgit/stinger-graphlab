@@ -97,6 +97,20 @@ string_append_char(string_t * s, char c) {
 }
 
 void
+string_prepend_char(string_t * s, char c) {
+  if(s->len >= s->max-1) {
+    s->max *= 2;
+    s->str = realloc(s->str, s->max);
+  }
+  int i = s->len++;
+  while(i > 0) {
+    s->str[i] = s->str[i-1];
+    i--;
+  }
+  s->str[0] = c;
+}
+
+void
 string_append_string(string_t * dest, string_t * source) {
   while(dest->len + source->len >= dest->max-1) {
     dest->max *= 2;

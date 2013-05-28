@@ -187,7 +187,32 @@ stinger_vertex_to_json(const stinger_vertices_t * vertices, stinger_physmap_t * 
   JSON_INT64(inDegree, vout->inDegree);
   JSON_INT64(outDegree, vout->outDegree);
   JSON_SUBOBJECT(physID);
-  stinger_physmap_id_to_json(phys, &vout->physID, out, indent_level+1);
+  stinger_physmap_id_to_json(phys, v, out, indent_level+1);
+#if defined(STINGER_VERTEX_KEY_VALUE_STORE)
+  /* TODO attributes */
+#endif
+  JSON_OBJECT_END();
+  JSON_END();
+}
+
+inline void
+stinger_vertex_to_json_with_type_strings(const stinger_vertices_t * vertices, const stinger_names_t * tn, stinger_physmap_t * phys, vindex_t v, FILE * out, int64_t indent_level) {
+  const stinger_vertex_t * vout = VTX(v);
+
+  JSON_INIT(out, indent_level);
+  JSON_OBJECT_START_UNLABELED();
+  JSON_INT64(vid, v);
+  char * vtype = stinger_names_lookup_name(tn,vout->type);
+  if(vtype) {
+    JSON_STRING(vtype, vtype);
+  } else {
+    JSON_INT64(vtype, vout->type);
+  }
+  JSON_VWEIGHT(vweight, vout->weight);
+  JSON_INT64(inDegree, vout->inDegree);
+  JSON_INT64(outDegree, vout->outDegree);
+  JSON_SUBOBJECT(physID);
+  stinger_physmap_id_to_json(phys, v, out, indent_level+1);
 #if defined(STINGER_VERTEX_KEY_VALUE_STORE)
   /* TODO attributes */
 #endif

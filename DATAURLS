@@ -1,0 +1,45 @@
+"/getphysid/" + stingerID, stingerID, ..
+"/getstingerid/" + physID, physID, ..
+
+"/getegonet/" + stingerID
+"/getegonet/byphysid/" + physical id
+  returns JOSN of 1.5 hop neighborhood
+
+"/getsubgraph/" + stingerID, stingerID, stingerID, ...
+"/getsubgraph/byphysid/" + physical id, physical id, physical id, ...
+  returns JSON of overlapped egonets
+
+"/getlabels" 
+  returns JSON of available labels
+  ex:
+  {
+    "labels": ["ConnectedComponentIDs",
+    "CommunityIDs"
+    ] }
+
+"/getlables/" + label
+  returns complete JSON of labels
+  ex:
+  {
+    "0": 0,
+    "1": 1,
+    "2": 0,
+    "3": 1
+  }
+
+"/getscores" 
+  returns JSON of available scores
+  ex:
+  {
+    "scores": ["BetweennessCentralities"
+    ] }
+
+"/getlables/" + score
+  returns complete JSON of scores
+  ex:
+  {
+    "0": 0.000000,
+    "1": 0.000000,
+    "2": 0.000000,
+    "3": 0.000000
+  }

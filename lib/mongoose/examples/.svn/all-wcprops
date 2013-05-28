@@ -3,6 +3,24 @@ svn:wc:ra_dav:version-url
 V 63
 /graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/examples
 END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/examples/Makefile
+END
+ssl_cert.pem
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/examples/ssl_cert.pem
+END
+chat.c
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/examples/chat.c
+END
 hello
 K 25
 svn:wc:ra_dav:version-url
@@ -32,22 +50,4 @@ K 25
 svn:wc:ra_dav:version-url
 V 75
 /graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/examples/websocket.c
-END
-Makefile
-K 25
-svn:wc:ra_dav:version-url
-V 72
-/graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/examples/Makefile
-END
-ssl_cert.pem
-K 25
-svn:wc:ra_dav:version-url
-V 76
-/graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/examples/ssl_cert.pem
-END
-chat.c
-K 25
-svn:wc:ra_dav:version-url
-V 70
-/graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/examples/chat.c
 END

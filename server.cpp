@@ -1,5 +1,7 @@
 extern "C" {
 #include "stinger.h"
+#include "web.h"
+#include "xmalloc.h"
 }
 
 #include "stinger-batch.pb.h"
@@ -12,13 +14,126 @@ extern "C" {
 
 using namespace gt::stinger;
 
+void
+components_init(struct stinger * S, int64_t nv, int64_t * component_map);
+
+void
+components_batch(struct stinger * S, int64_t nv, int64_t * component_map);
+
 #define V_A(X,...) fprintf(stdout, "%s %s %d:\n\t" #X "\n", __FILE__, __func__, __LINE__, __VA_ARGS__);
 #define V(X) V_A(X,NULL)
+
+/**
+* @brief Inserts and removes the edges contained in a batch.
+*
+* Maps new vertices as needed for insertions.  Deletions with non-existant vertices
+* are ignored.
+*
+* @param S A pointer to the STINGER structure.
+* @param batch A reference to the protobuf
+*
+* @return 0 on success.
+*/
+int
+process_batch(stinger_t * S, StingerBatch & batch) {
+
+  switch(batch.type()) {
+
+    case NUMBERS_ONLY: {
+
+      OMP("omp parallel for")
+      for(int i = 0; i < batch.insertions_size(); i++) {
+	const EdgeInsertion & in = batch.insertions(i);
+	stinger_incr_edge_pair(S, in.type(), in.source(), in.destination(), in.weight(), in.time());
+      }
+
+      OMP("omp parallel for")
+      for(int d = 0; d < batch.deletions_size(); d++) {
+	const EdgeDeletion & del = batch.deletions(d);
+	stinger_remove_edge_pair(S, del.type(), del.source(), del.destination());
+      }
+
+    } break;
+
+    case STRINGS_ONLY: {
+
+      OMP("omp parallel for")
+      for(int i = 0; i < batch.insertions_size(); i++) {
+	const EdgeInsertion & in = batch.insertions(i);
+	int64_t src, dest;
+	stinger_mapping_create(S, in.source_str().c_str(), in.source_str().length(), &src);
+	stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &dest);
+
+	stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
+      }
+
+      OMP("omp parallel for")
+      for(int d = 0; d < batch.deletions_size(); d++) {
+	const EdgeDeletion & del = batch.deletions(d);
+	int64_t src, dest;
+	src = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
+	dest = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
+
+	if(src != -1 && dest != -1)
+	  stinger_remove_edge_pair(S, del.type(), src, dest);
+      }
+
+    } break;
+
+    case MIXED: {
+
+      OMP("omp parallel for")
+      for(int i = 0; i < batch.insertions_size(); i++) {
+	const EdgeInsertion & in = batch.insertions(i);
+	int64_t src, dest;
+
+	if(in.has_source()) {
+	  src = in.source();
+	} else {
+	  stinger_mapping_create(S, in.source_str().c_str(), in.source_str().length(), &src);
+	}
+
+	if(in.has_destination()) {
+	  dest = in.destination();
+	} else {
+	  stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &dest);
+	}
+
+	stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
+      }
+
+      OMP("omp parallel for")
+      for(int d = 0; d < batch.deletions_size(); d++) {
+	const EdgeDeletion & del = batch.deletions(d);
+	int64_t src, dest;
+
+	if(del.has_source()) {
+	  src = del.source();
+	} else {
+	  src = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
+	}
+
+	if(del.has_destination()) {
+	  dest = del.destination();
+	} else {
+	  dest = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
+	}
+
+	if(src != -1 && dest != -1)
+	  stinger_remove_edge_pair(S, del.type(), src, dest);
+      }
+    } break;
+  }
+
+  return 0;
+}
 
 int
 main(int argc, char *argv[])
 {
   struct stinger * S = stinger_new();
+
+  web_start_stinger(S, "8088");
 
   /* global options */
   int port = 10101;
@@ -69,6 +184,16 @@ main(int argc, char *argv[])
     exit(-1);
   }
 
+  int64_t * components = (int64_t *)xmalloc(sizeof(int64_t) * STINGER_MAX_LVERTICES);
+  int64_t * communities = (int64_t *)xmalloc(sizeof(int64_t) * STINGER_MAX_LVERTICES);
+  double * centralities = (double *)xmalloc(sizeof(double) * STINGER_MAX_LVERTICES);
+
+  web_set_label_container("ConnectedComponentIDs", components);
+  web_set_label_container("CommunityIDs", communities);
+  web_set_score_container("BetweennessCentralities", centralities);
+
+  components_init(S, STINGER_MAX_LVERTICES, components);
+
   while(1) {
     V("Ready to accept messages.");
 
@@ -80,86 +205,57 @@ main(int argc, char *argv[])
       StingerBatch batch;
       batch.ParseFromString((const char *)buffer);
 
-      batch.PrintDebugString();
+      //batch.PrintDebugString();
 
-      switch(batch.type()) {
-	case NUMBERS_ONLY: {
-	  OMP("omp parallel for")
-	  for(int i = 0; i < batch.insertions_size(); i++) {
-	    const EdgeInsertion & in = batch.insertions(i);
-	    stinger_incr_edge_pair(S, in.type(), in.source(), in.destination(), in.weight(), in.time());
-	  }
-	  OMP("omp parallel for")
-	  for(int d = 0; d < batch.deletions_size(); d++) {
-	    const EdgeDeletion & del = batch.deletions(d);
-	    stinger_remove_edge_pair(S, del.type(), del.source(), del.destination());
-	  }
-	} break;
-	case STRINGS_ONLY: {
-	  OMP("omp parallel for")
-	  for(int i = 0; i < batch.insertions_size(); i++) {
-	    const EdgeInsertion & in = batch.insertions(i);
-	    int64_t src, dest;
-	    stinger_mapping_create(S, in.source_str().c_str(), in.source_str().length(), &src);
-	    stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &dest);
+      process_batch(S, batch);
 
-	    stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
-	  }
-	  OMP("omp parallel for")
-	  for(int d = 0; d < batch.deletions_size(); d++) {
-	    const EdgeDeletion & del = batch.deletions(d);
-	    int64_t src, dest;
-	    src = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
-	    dest = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
-
-	    if(src != -1 && dest != -1)
-	      stinger_remove_edge_pair(S, del.type(), src, dest);
-	  }
-	} break;
-	case MIXED: {
-	  OMP("omp parallel for")
-	  for(int i = 0; i < batch.insertions_size(); i++) {
-	    const EdgeInsertion & in = batch.insertions(i);
-	    int64_t src, dest;
-
-	    if(in.has_source()) {
-	      src = in.source();
-	    } else {
-	      stinger_mapping_create(S, in.source_str().c_str(), in.source_str().length(), &src);
-	    }
-
-	    if(in.has_destination()) {
-	      dest = in.destination();
-	    } else {
-	      stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &dest);
-	    }
-
-	    stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
-	  }
-	  OMP("omp parallel for")
-	  for(int d = 0; d < batch.deletions_size(); d++) {
-	    const EdgeDeletion & del = batch.deletions(d);
-	    int64_t src, dest;
-
-	    if(del.has_source()) {
-	      src = del.source();
-	    } else {
-	      src = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
-	    }
-
-	    if(del.has_destination()) {
-	      dest = del.destination();
-	    } else {
-	      dest = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
-	    }
-
-	    if(src != -1 && dest != -1)
-	      stinger_remove_edge_pair(S, del.type(), src, dest);
-	  }
-	} break;
-      }
+      components_batch(S, STINGER_MAX_LVERTICES, components);
     }
   }
 
   return 0;
+}
+
+void
+components_init(struct stinger * S, int64_t nv, int64_t * component_map) {
+  /* Initialize each vertex with its own component label in parallel */
+  OMP ("omp parallel for")
+    for (uint64_t i = 0; i < nv; i++) {
+      component_map[i] = i;
+    }
+  
+  components_batch(S, nv, component_map);
+}
+
+void
+components_batch(struct stinger * S, int64_t nv, int64_t * component_map) {
+  /* Iterate until no changes occur */
+  while (1) {
+    int changed = 0;
+
+    /* For all edges in the STINGER graph of type 0 in parallel, attempt to assign
+       lesser component IDs to neighbors with greater component IDs */
+    for(uint64_t t = 0; t < STINGER_NUMETYPES; t++) {
+      STINGER_PARALLEL_FORALL_EDGES_BEGIN (S, t) {
+      if (component_map[STINGER_EDGE_DEST] <
+          component_map[STINGER_EDGE_SOURCE]) {
+        component_map[STINGER_EDGE_SOURCE] = component_map[STINGER_EDGE_DEST];
+        changed++;
+      }
+    }
+    STINGER_PARALLEL_FORALL_EDGES_END ();
+    }
+
+    /* if nothing changed */
+    if (!changed)
+      break;
+
+    /* Tree climbing with OpenMP parallel for */
+    OMP ("omp parallel for")
+      MTA ("mta assert nodep")
+      for (uint64_t i = 0; i < nv; i++) {
+        while (component_map[i] != component_map[component_map[i]])
+          component_map[i] = component_map[component_map[i]];
+      }
+  }
 }

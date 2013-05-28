@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include "stinger-config.h"
+#include "stinger-names.h"
 //#include "stinger-edge.h"
 typedef int64_t adjacency_t;
 
@@ -143,6 +144,9 @@ stinger_vertex_physmap_pointer_get(const stinger_vertices_t * vertices, vindex_t
 
 void
 stinger_vertex_to_json(const stinger_vertices_t * vertices, stinger_physmap_t * phys, vindex_t v, FILE * out, int64_t indent_level);
+
+void
+stinger_vertex_to_json_with_type_strings(const stinger_vertices_t * vertices, const stinger_names_t * tn, stinger_physmap_t * phys, vindex_t v, FILE * out, int64_t indent_level);
 
 void
 stinger_vertex_to_xml(const stinger_vertices_t * vertices, vindex_t v, FILE * out, int64_t indent_level);

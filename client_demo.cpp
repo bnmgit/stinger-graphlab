@@ -117,7 +117,7 @@ main(int argc, char *argv[])
   /* global options */
   int src_port = 10102;
   int dst_port = 10101;
-  int batch_size = 1000000;
+  int batch_size = 100000;
   int num_batches = -1;
   int is_json = 0;
   uint64_t buffer_size = 1ULL << 28ULL;
@@ -139,6 +139,14 @@ main(int argc, char *argv[])
 
       case 'b': {
 	buffer_size = atol(optarg);
+      } break;
+
+      case 'x': {
+	batch_size = atol(optarg);
+      } break;
+
+      case 'y': {
+	num_batches = atol(optarg);
       } break;
 
       case 'j': {
@@ -220,7 +228,6 @@ main(int argc, char *argv[])
     exit(-1);
   }
 
-  V("Parsing messages.");
 
   FILE * fp = fopen(filename, "r");
 
@@ -235,6 +242,7 @@ main(int argc, char *argv[])
     batch.set_type(use_strings ? STRINGS_ONLY : NUMBERS_ONLY);
 
     while(!feof(fp)) {
+      V("Parsing messages.");
 
       for(int e = 0; e < batch_size && !feof(fp); e++) {
 	line++;
@@ -298,16 +306,18 @@ main(int argc, char *argv[])
   } else {
     char * line = NULL;
     size_t line_len = 0;
-    rapidjson::Document d;
 
     int batch_num = 0;
 
     while(!feof(fp)) {
+      V("Parsing messages.");
+
+      rapidjson::Document d;
       StingerBatch batch;
       batch.set_make_undirected(true);
       batch.set_type(STRINGS_ONLY);
 
-      for(int e = 0; e < batch_size && !feof(fp); e++) {
+      for(int e = 0; (e < batch_size) && !feof(fp); e++) {
 	getline(&line, &line_len, fp);
 	d.Parse<0>(line);
 
@@ -323,6 +333,7 @@ main(int argc, char *argv[])
       }
 
       V("Sending messages.");
+      //batch.PrintDebugString();
 
       std::string out_buffer;
 
@@ -330,7 +341,7 @@ main(int argc, char *argv[])
 
       write(sock_handle, out_buffer.c_str(), out_buffer.size());
 
-      if((batch_num >= num_batches) && (num_batches == -1)) {
+      if((batch_num >= num_batches) && (num_batches != -1)) {
 	break;
       } else {
 	batch_num++;

@@ -357,13 +357,13 @@ red=; grn=; lgn=; blu=; std=
 am__EXEEXT_2 =  \
 	google/protobuf/io/gzip_stream_unittest.sh
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-ACLOCAL = ${SHELL} /export5/home/rmccoll/projects/stinger-graphlab/lib/protobuf-2.5.0/missing --run aclocal-1.11
+ACLOCAL = ${SHELL} /home/users/rmccoll/Projects/stinger-graphlab/lib/protobuf-2.5.0/missing --run aclocal-1.11
 AMTAR = $${TAR-tar}
 AR = ar
-AUTOCONF = ${SHELL} /export5/home/rmccoll/projects/stinger-graphlab/lib/protobuf-2.5.0/missing --run autoconf
-AUTOHEADER = ${SHELL} /export5/home/rmccoll/projects/stinger-graphlab/lib/protobuf-2.5.0/missing --run autoheader
-AUTOMAKE = ${SHELL} /export5/home/rmccoll/projects/stinger-graphlab/lib/protobuf-2.5.0/missing --run automake-1.11
-AWK = gawk
+AUTOCONF = ${SHELL} /home/users/rmccoll/Projects/stinger-graphlab/lib/protobuf-2.5.0/missing --run autoconf
+AUTOHEADER = ${SHELL} /home/users/rmccoll/Projects/stinger-graphlab/lib/protobuf-2.5.0/missing --run autoheader
+AUTOMAKE = ${SHELL} /home/users/rmccoll/Projects/stinger-graphlab/lib/protobuf-2.5.0/missing --run automake-1.11
+AWK = mawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
 CFLAGS = 
@@ -400,7 +400,7 @@ LIPO =
 LN_S = ln -s
 LTLIBOBJS = 
 MAINT = 
-MAKEINFO = ${SHELL} /export5/home/rmccoll/projects/stinger-graphlab/lib/protobuf-2.5.0/missing --run makeinfo
+MAKEINFO = ${SHELL} /home/users/rmccoll/Projects/stinger-graphlab/lib/protobuf-2.5.0/missing --run makeinfo
 MANIFEST_TOOL = :
 MKDIR_P = /bin/mkdir -p
 NM = /usr/bin/nm -B
@@ -426,13 +426,13 @@ PTHREAD_LIBS =  -lpthread
 RANLIB = ranlib
 SED = /bin/sed
 SET_MAKE = 
-SHELL = /bin/sh
+SHELL = /bin/bash
 STRIP = strip
 VERSION = 2.5.0
-abs_builddir = /export5/home/rmccoll/projects/stinger-graphlab/lib/protobuf-2.5.0/src
-abs_srcdir = /export5/home/rmccoll/projects/stinger-graphlab/lib/protobuf-2.5.0/src
-abs_top_builddir = /export5/home/rmccoll/projects/stinger-graphlab/lib/protobuf-2.5.0
-abs_top_srcdir = /export5/home/rmccoll/projects/stinger-graphlab/lib/protobuf-2.5.0
+abs_builddir = /home/users/rmccoll/Projects/stinger-graphlab/lib/protobuf-2.5.0/src
+abs_srcdir = /home/users/rmccoll/Projects/stinger-graphlab/lib/protobuf-2.5.0/src
+abs_top_builddir = /home/users/rmccoll/Projects/stinger-graphlab/lib/protobuf-2.5.0
+abs_top_srcdir = /home/users/rmccoll/Projects/stinger-graphlab/lib/protobuf-2.5.0
 ac_ct_AR = ar
 ac_ct_CC = gcc
 ac_ct_CXX = g++
@@ -463,7 +463,7 @@ host_vendor = unknown
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /export5/home/rmccoll/projects/stinger-graphlab/lib/protobuf-2.5.0/install-sh
+install_sh = ${SHELL} /home/users/rmccoll/Projects/stinger-graphlab/lib/protobuf-2.5.0/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -472,7 +472,7 @@ mandir = ${datarootdir}/man
 mkdir_p = /bin/mkdir -p
 oldincludedir = /usr/include
 pdfdir = ${docdir}
-prefix = /home/rmccoll
+prefix = /usr/local
 program_transform_name = s,x,x,
 psdir = ${docdir}
 sbindir = ${exec_prefix}/sbin
@@ -861,9 +861,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu src/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign src/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu src/Makefile
+	  $(AUTOMAKE) --foreign src/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \

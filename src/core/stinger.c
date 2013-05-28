@@ -27,6 +27,16 @@ stinger_physmap_get(const stinger_t * S) {
 }
 #endif
 
+inline stinger_names_t *
+stinger_vtype_names_get(const stinger_t * S) {
+  return S->etype_names;
+}
+
+inline stinger_names_t *
+stinger_etype_names_get(const stinger_t * S) {
+  return S->vtype_names;
+}
+
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
  * EXTERNAL INTERFACE FOR VERTICES
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -136,6 +146,50 @@ int
 stinger_mapping_physid_direct(const stinger_t * S, vindex_t vertexID, char ** out_ptr, uint64_t * out_len) {
   return stinger_physmap_id_direct(stinger_physmap_get(S), stinger_vertices_get(S), vertexID, out_ptr, out_len);
 }
+
+vindex_t
+stinger_mapping_nv(const stinger_t * S) {
+  return stinger_physmap_nv(stinger_physmap_get(S));
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
+ * EXTERNAL INTERFACE FOR VTYPE NAMES
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int
+stinger_vtype_names_create_type(stinger_t * S, char * name, int64_t * out) {
+  return stinger_names_create_type(stinger_vtype_names_get(S), name, out);
+}
+
+int64_t
+stinger_vtype_names_lookup_type(const stinger_t * S, char * name) {
+  return stinger_names_lookup_type(stinger_vtype_names_get(S), name);
+}
+
+char *
+stinger_vtype_names_lookup_name(const stinger_t * S, int64_t type) {
+  return stinger_names_lookup_name(stinger_vtype_names_get(S), type);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
+ * EXTERNAL INTERFACE FOR ETYPE NAMES
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int
+stinger_etype_names_create_type(stinger_t * S, char * name, int64_t * out) {
+  return stinger_names_create_type(stinger_etype_names_get(S), name, out);
+}
+
+int64_t
+stinger_etype_names_lookup_type(const stinger_t * S, char * name) {
+  return stinger_names_lookup_type(stinger_etype_names_get(S), name);
+}
+
+char *
+stinger_etype_names_lookup_name(const stinger_t * S, int64_t type) {
+  return stinger_names_lookup_name(stinger_etype_names_get(S), type);
+}
+
 
 /* {{{ Edge block pool */
 /* TODO XXX Rework / possibly move EB POOL functions */
@@ -530,6 +584,9 @@ struct stinger *stinger_new (void)
 #if !defined(STINGER_FORCE_OLD_MAP)
   G->physmap  = stinger_physmap_new (STINGER_MAX_LVERTICES*128);
 #endif
+  G->etype_names = stinger_names_new(STINGER_NUMETYPES);
+  G->vtype_names = stinger_names_new(STINGER_NUMVTYPES);
+
   G->ETA = xmalloc (STINGER_NUMETYPES * sizeof(struct stinger_etype_array));
   G->ebpool = xmalloc(sizeof(struct stinger_ebpool));
   G->ebpool->ebpool_tail = 1;
@@ -875,6 +932,30 @@ stinger_insert_edge (struct stinger *G,
     }
     writeef ((uint64_t *)block_ptr, (uint64_t)old_eb);
   }
+}
+
+/** @brief Returns the out-degree of a vertex for a given edge type
+ *
+ *  @param S The STINGER data structure
+ *  @param i Logical vertex ID
+ *  @param type Edge type
+ *  @return Out-degree of vertex i with type
+ */
+int64_t
+stinger_typed_outdegree (const struct stinger * S, int64_t i, int64_t type) {
+  int64_t out = 0;
+  struct curs curs;
+  struct stinger_eb *tmp;
+  struct stinger_eb *ebpool_priv = S->ebpool->ebpool;
+
+  curs = etype_begin (S, S->vertices, i, type);
+
+  for (tmp = ebpool_priv + curs.eb; tmp != ebpool_priv; tmp = ebpool_priv + readff((uint64_t *)&tmp->next)) {
+    if(type == tmp->etype) {
+      out++;
+    }
+  }
+  return out;
 }
 
 /** @brief Increments a directed edge.

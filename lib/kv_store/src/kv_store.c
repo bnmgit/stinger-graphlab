@@ -321,6 +321,7 @@ kv_element_equal(kv_element_t * a, kv_element_t * b) {
   IFNULL(b, return KV_RECEIVED_NULL);
 
   if(a->type != b->type) {
+    if((a->type != KV_STR_STATIC && a->type != KV_STR) || (b->type != KV_STR && b->type != KV_STR_STATIC))
     return KV_NOT_EQUAL;
   }
 

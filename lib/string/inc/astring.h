@@ -34,6 +34,9 @@ void
 string_append_char(string_t * s, char c);
 
 void
+string_prepend_char(string_t * s, char c);
+
+void
 string_append_string(string_t * dest, string_t * source);
 
 void

@@ -3,12 +3,6 @@ svn:wc:ra_dav:version-url
 V 59
 /graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/test
 END
-hello.cgi
-K 25
-svn:wc:ra_dav:version-url
-V 69
-/graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/test/hello.cgi
-END
 ssi1.shtml
 K 25
 svn:wc:ra_dav:version-url
@@ -152,4 +146,10 @@ K 25
 svn:wc:ra_dav:version-url
 V 71
 /graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/test/unit_test.c
+END
+hello.cgi
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/graphs/!svn/ver/555/stinger/branches/rad/lib/mongoose/test/hello.cgi
 END
