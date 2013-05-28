@@ -213,12 +213,12 @@ main(int argc, char *argv[])
 	bytes_received += recv(accept_handle, buffer, sizeof(int64_t) - bytes_received, 0);
 
       int64_t message_size = *((int64_t *)buffer);
-      if(message_size != -1) {
+      if(message_size > 0) {
 	buffer += sizeof(int64_t);
 
 	bytes_received = 0;
 
-	while(bytes_received < sizeof(int64_t))
+	while(bytes_received < message_size)
 	  bytes_received += recv(accept_handle, buffer, message_size - bytes_received, 0);
 
 	V_A("Received message of size %ld", (long)message_size);
@@ -234,8 +234,11 @@ main(int argc, char *argv[])
 	}
 
 	buffer -= sizeof(int64_t);
-      } else {
+      } else if(message_size == -1) {
 	break;
+      } else {
+	V_A("Received message of size %ld", (long)message_size);
+	abort();
       }
     }
   }
