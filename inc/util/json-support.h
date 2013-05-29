@@ -24,4 +24,7 @@ egonet_to_json(stinger_t * S, int64_t vtx);
 string_t *
 group_to_json(stinger_t * S, int64_t * group, int64_t groupsize);
 
+string_t *
+labeled_subgraph_to_json(stinger_t * S, int64_t src, int64_t * labels);
+
 #endif  /*JSON_SUPPORT_H*/

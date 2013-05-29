@@ -207,7 +207,6 @@ get_stingerid_json(stinger_t * S, char * phys_ids) {
   int64_t found = 0;
   char intbuf[256];
   for(uint64_t i = 0; i < count; i++) {
-    printf("trying %.*s\n", lengths[i], fields[i]);
     int64_t vtx = stinger_mapping_lookup(S, fields[i], lengths[i]);
     if(vtx < STINGER_MAX_LVERTICES && vtx >= 0) {
       if(found) {
@@ -280,8 +279,8 @@ begin_request_handler(struct mg_connection *conn)
       char * len = strchr(suburi, '/');
       int all = 0;
       if(len && len == (suburi + strlen(suburi - 1))) {
+	strncpy(tmp, suburi, len - suburi);
 	suburi = tmp;
-	strncpy(tmp, suburi, len - suburi - 1);
       }
       if(!len || all) {
 	string_t * rslt = get_labels_json(suburi);
@@ -318,8 +317,8 @@ begin_request_handler(struct mg_connection *conn)
       char * len = strchr(suburi, '/');
       int all = 0;
       if(len && len == (suburi + strlen(suburi - 1))) {
+	strncpy(tmp, suburi, len - suburi);
 	suburi = tmp;
-	strncpy(tmp, suburi, len - suburi - 1);
       }
       if(!len || all) {
 	string_t * rslt = get_scores_json(suburi);
@@ -334,6 +333,47 @@ begin_request_handler(struct mg_connection *conn)
 	return 1;
       }
     }
+  }
+
+  if(0 == strncmp(request_info->uri, "/getlabelnet", 12)) {
+    const char * suburi = request_info->uri + 12;
+    if(suburi[0] == '/') suburi++;
+
+    char tmp[1024];
+    char * len = strchr(suburi, '/');
+    int all = 0;
+    if(len) {
+      strncpy(tmp, suburi, len - suburi);
+      suburi = len+1;
+
+      kv_element_t key = kve_from_str_static(tmp);
+      kv_element_t * val;
+
+      if(KV_SUCCESS == kv_store_get(&labels, &key, &val)) {
+	int64_t vtx = 0;
+	if(0 == strncmp(suburi, "byphysid/", 9)) {
+	  suburi += 9;
+	  vtx = stinger_mapping_lookup(S, suburi, strlen(suburi));
+	} else {
+	  vtx = atoi(suburi);
+	}
+
+	if(vtx < STINGER_MAX_LVERTICES && vtx >= 0) {
+	    string_t * rslt = labeled_subgraph_to_json(S, vtx, kve_get_ptr(val));
+	    mg_printf(conn,
+		"HTTP/1.1 200 OK\r\n"
+		"Content-Type: text/plain\r\n"
+		"Content-Length: %d\r\n"        // Always set Content-Length
+		"\r\n"
+		"%s",
+		rslt->len, rslt->str);
+	    string_free(rslt);
+	  return 1;
+	}
+      }
+    }
+
+    return 0;
   }
 
   if(0 == strncmp(request_info->uri, "/getstingerid", 13)) {
