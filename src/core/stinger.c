@@ -234,6 +234,7 @@ get_from_ebpool (const struct stinger * S, eb_index_t *out, size_t k)
  */
 uint64_t
 stinger_max_active_vertex(const struct stinger * S) {
+#if 0
   uint64_t out = 0;
   OMP("omp parallel") {
     uint64_t local_max = 0;
@@ -250,6 +251,9 @@ stinger_max_active_vertex(const struct stinger * S) {
     }
   }
   return out;
+#else
+  return S->vertices->max_active_vertex;
+#endif
 }
 
 /** @brief Calculate the number of active vertices
@@ -840,10 +844,10 @@ update_edge_data (struct stinger * S, struct stinger_eb *eb,
  *  @return 1 if edge is inserted successfully for the first time, 0 if edge is already found and updated, -1 if error.
  */
 MTA ("mta inline") MTA("mta serial")
-int
-stinger_insert_edge (struct stinger *G,
-                     int64_t type, int64_t from, int64_t to,
-                     int64_t weight, int64_t timestamp)
+static int
+stinger_insert_edge_ (struct stinger *G,
+		      int64_t type, int64_t from, int64_t to,
+		      int64_t weight, int64_t timestamp)
 {
   if(from == to)
     return -1;
@@ -934,6 +938,38 @@ stinger_insert_edge (struct stinger *G,
   }
 }
 
+MTA ("mta inline") MTA("mta serial")
+static inline void
+stinger_activate_up_to_vertex_ (struct stinger *G, int64_t v)
+{
+  int64_t old_nactive;
+#if !defined(__MTA__)
+  {
+    do {
+      old_nactive = G->vertices->max_active_vertex;
+    } while (v > old_nactive &&
+	     old_nactive == stinger_int64_cas (&G->vertices->max_active_vertex,
+					       old_nactive, v));
+  }
+#else
+  if (v > G->vertices->max_active_vertex) {
+    old_nactive = readfe (&G->vertices->max_active_vertex);
+    if (v > old_nactive) old_nactive = v;
+    writeef (&G->vertices->max_active_vertex, old_nactive);
+  }
+#endif
+}
+
+MTA ("mta inline") MTA("mta serial")
+int
+stinger_insert_edge (struct stinger *G,
+		     int64_t type, int64_t from, int64_t to,
+		     int64_t weight, int64_t timestamp)
+{
+  stinger_activate_up_to_vertex_ (G, (from > to? from : to));
+  return stinger_insert_edge_ (G, type, from, to, weight, timestamp);
+}
+
 /** @brief Returns the out-degree of a vertex for a given edge type
  *
  *  @param S The STINGER data structure
@@ -972,10 +1008,10 @@ stinger_typed_outdegree (const struct stinger * S, int64_t i, int64_t type) {
  *  @return 1
  */
 MTA ("mta inline")
-int
-stinger_incr_edge (struct stinger *G,
-                   int64_t type, int64_t from, int64_t to,
-                   int64_t weight, int64_t timestamp)
+static int
+stinger_incr_edge_ (struct stinger *G,
+		    int64_t type, int64_t from, int64_t to,
+		    int64_t weight, int64_t timestamp)
 {
   if(from == to)
     return -1;
@@ -1066,6 +1102,16 @@ stinger_incr_edge (struct stinger *G,
   }
 }
 
+MTA ("mta inline") MTA("mta serial")
+int
+stinger_incr_edge (struct stinger *G,
+		   int64_t type, int64_t from, int64_t to,
+		   int64_t weight, int64_t timestamp)
+{
+  stinger_activate_up_to_vertex_ (G, (from > to? from : to));
+  return stinger_incr_edge_ (G, type, from, to, weight, timestamp);
+}
+
 /** @brief Insert an undirected edge.
  *
  *  Inserts a typed, undirected edge.  First timestamp is set, if the edge is
@@ -1087,8 +1133,10 @@ stinger_insert_edge_pair (struct stinger *G,
 {
   STINGERASSERTS();
 
-  int rtn = stinger_insert_edge (G, type, from, to, weight, timestamp);
-  int rtn2 = stinger_insert_edge (G, type, to, from, weight, timestamp);
+  stinger_activate_up_to_vertex_ (G, (from > to? from : to));
+
+  int rtn = stinger_insert_edge_ (G, type, from, to, weight, timestamp);
+  int rtn2 = stinger_insert_edge_ (G, type, to, from, weight, timestamp);
 
   /* Check if either returned -1 */
   if(rtn < 0 || rtn2 < 0)
@@ -1118,8 +1166,10 @@ stinger_incr_edge_pair (struct stinger *G,
 {
   STINGERASSERTS();
 
-  int rtn = stinger_incr_edge (G, type, from, to, weight, timestamp);
-  int rtn2 = stinger_incr_edge (G, type, to, from, weight, timestamp);
+  stinger_activate_up_to_vertex_ (G, (from > to? from : to));
+
+  int rtn = stinger_incr_edge_ (G, type, from, to, weight, timestamp);
+  int rtn2 = stinger_incr_edge_ (G, type, to, from, weight, timestamp);
 
   /* Check if either returned -1 */
   if(rtn < 0 || rtn2 < 0)
@@ -1253,6 +1303,7 @@ stinger_set_initial_edges (struct stinger *G,
 
   assert (G);
   vertices = G->vertices;
+  vertices->max_active_vertex = nv-1;
 
   blkoff = xcalloc (nv + 1, sizeof (*blkoff));
   OMP ("omp parallel for")

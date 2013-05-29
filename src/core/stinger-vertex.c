@@ -16,6 +16,7 @@ stinger_vertices_new(int64_t max_vertices)
 {
   stinger_vertices_t * rtn = calloc(1, sizeof(stinger_vertices_t) + max_vertices * sizeof(stinger_vertex_t));
   rtn->max_vertices = max_vertices;
+  rtn->max_active_vertex = -1;
   return rtn;
 }
 

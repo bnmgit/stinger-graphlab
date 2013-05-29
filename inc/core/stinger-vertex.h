@@ -77,6 +77,7 @@ struct stinger_vertex
 struct stinger_vertices
 {
   int64_t	    max_vertices;
+  int64_t	    max_active_vertex;
   stinger_vertex_t  vertices[0];
 };
 
