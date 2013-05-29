@@ -22,8 +22,6 @@ extern "C" {
 #include <netinet/in.h>
 #include <unistd.h>
 
-#include <vector>
-
 using namespace gt::stinger;
 
 void
