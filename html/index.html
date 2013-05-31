@@ -5,11 +5,16 @@
     <title>STINGER - Twitter</title>
     <script src="lib/d3/d3.v3.js" type="text/javascript"></script>
     <script src="lib/d3.stinger.js" type="text/javascript"></script>
+    <script src="lib/canvas/canvasjs.min.js" type="text/javascript"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="lib/bootstrap/css/bootstrap_stinger.css" rel="stylesheet" media="screen">
   </head>
   <body>
     <div class="container">
+      <div class="row">
+	<h2 class="">Stats</h2>
+      <div id="chartcontainer" style="height:360px"></div>
+      </div>
       <div class="row">
 	<h2 class="">Search</h2>
 	<div class="span12">
@@ -117,6 +122,72 @@
     <script src="lib/jquery/jquery-2.0.1.min.js"></script>
 
     <script type="text/javascript">
+
+      var chart = null;
+      var chartdata = {};
+      var ordermap = {};
+      var time = 0;
+      var chartsrc = 0;
+      var chartTimeout = 0;
+      
+      function resetCharts() {
+	chartsrc = $("#select_labels").val();
+	d3.json("/getlabelstats/" + chartsrc,
+	function(error, stats) {
+	  data = [];
+	  var count = 0;
+	  time = 3;
+	  for(s in stats) {
+	    chartdata[s] = [{x:time, y: Math.log(stats[s])}];
+	    ordermap[s] = count;
+	    data.push({ 
+	      type: "line",
+	      showInLegend: true,
+	      name: s,
+	      dataPoints: chartdata[s]
+	    });
+	    count += 1;
+	  }
+
+	  chart = new CanvasJS.Chart("chartcontainer", {
+	    zoomEnabled: true,
+	    toolTip: {
+	      shared: true,
+	    },
+	    legend: {
+	      verticalAlign: "top",
+	      horizontalAlign: "center",
+	      fontSize: 14,
+	      fontWeight: "bold",
+	      fontFamily: "calibri",
+	      fontColor: "dimGrey"
+	    },
+	    axisX: {
+	      title: "seconds"
+	    },
+	    axisY:{
+	      title: "Log(x)",
+	      includeZero: false
+	    }, 
+	    data: data
+	  });
+	});
+      }
+
+      function updateChart() {
+	d3.json("/getlabelstats/" + chartsrc,
+	function(error, stats) {
+	  time += 3;
+	  for(s in stats) {
+	    chartdata[s].push({x:time, y:Math.log(stats[s])});
+	    chart.options.data[ordermap[s]].legendText = " " + s + " " + stats[s];
+	  }
+          chart.render();
+	  chartTimeout = window.setTimeout(updateChart, 3000);
+	});
+      }
+
+
       /***************************
       * initialization and globals
       */
@@ -185,6 +256,13 @@
 		window.clearTimeout(curTimeout);
 	      }
 	      curTimeout = window.setTimeout(updateGraph, 3000);
+	      if($("#select_labels").val() != chartsrc) {
+		resetCharts();
+		if(chartTimeout) {
+		  window.clearTimeout(chartTimeout);
+		}
+		chartTimeout = window.setTimeout(updateChart, 3000);
+	      }
 	    } else {
 	      search();
 	    }
