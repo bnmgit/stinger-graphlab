@@ -11,8 +11,9 @@
   <body>
     <div class="container">
       <div class="row">
+	<h2 class="">Search</h2>
 	<div class="span12">
-	  <form class="form-inline pull-right" action="javascript:search();">
+	  <form class="form-inline " action="javascript:search();">
 	    <select id="select_labels">
 	    </select>
 	    <input id="twitter_handle" type="text" class="input-medium" placeholder="Twitter Handle">
@@ -125,13 +126,21 @@
 
       var color = d3.scale.category20(); 
 
-      var svglinks, svgnodes;
-      var nodedata, linkdata;
+      /* references to full data */
       var graphjson;
+      var svglinks, svgnodes;
+
+      var curTimeout = null;
+
+      /* mappings from stingerland to d3lang */
+      var nodemap = {}, linkmap = {};
+
+      /* references to filtered data */
+      var nodedata, linkdata;
 
       var force = d3.layout.force() 
-	.charge(-30) 
-	.linkDistance(80) 
+	//.charge(-30) 
+	.linkDistance(30) 
 	.linkStrength(1)
 	.size([width, height]); 
 
@@ -153,12 +162,61 @@
       function search() {
 	d3.json("/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val(),
 	  function(error, graph) {
-	    graphjson = graph;
+	    if(!error) {
+	      graphjson = graph;
+	      linkmap = {};
+	      nodemap = {};
 
-	    svglinks = svg.selectAll(".link");
-	    svgnodes = svg.selectAll(".node");
+	      graphjson.vertices.forEach(function(d) {
+		nodemap[d.vid] = d;
+	      });
 
-	    resetGraph();
+	      graphjson.edges.forEach(function(d) {
+		e = [d.type, Math.min(d.src,d.dest), Math.max(d.src,d.dest)];
+		linkmap[e.join()] = d;
+	      });
+
+	      svglinks = svg.selectAll(".link");
+	      svgnodes = svg.selectAll(".node");
+
+	      resetGraph();
+
+	      if(curTimeout) {
+		window.clearTimeout(curTimeout);
+	      }
+	      curTimeout = window.setTimeout(updateGraph, 3000);
+	    } else {
+	      search();
+	    }
+	  });
+      }
+
+      function updateGraph() {
+	d3.json("/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val(),
+	  function(error, graph) {
+	    if(!error) {
+	      graph.vertices.forEach(function(d) {
+		if(!(d.vid in nodemap)) {
+		  nodemap[d.vid] = d;
+		  graphjson.vertices.push(d);
+		}
+	      });
+
+	      graph.edges.forEach(function(d) {
+		e = [d.type, Math.min(d.src,d.dest), Math.max(d.src,d.dest)];
+		if(!(e.join() in linkmap)) {
+		  linkmap[e.join()] = d;
+		  graphjson.edges.push(d);
+		  d.source = nodemap[d.src];
+		  d.target = nodemap[d.dest];
+		}
+	      });
+
+	      resetGraph();
+	      curTimeout = window.setTimeout(updateGraph, 3000);
+	    } else {
+	      updateGraph();
+	    }
 	  });
       }
 
@@ -167,23 +225,23 @@
        */
 
        function resetVertices() {
-	 $("#vweightMin").val() = "";
-	 $("#vweightMax").val() = "";
-	 $("#vdegreeMin").val() = "";
-	 $("#vdegreeMax").val() = "";
-	 $("#vtype").val() = "";
+	 $("#vweightMin").val("");
+	 $("#vweightMax").val("");
+	 $("#vdegreeMin").val("");
+	 $("#vdegreeMax").val("");
+	 $("#vtype").val("");
 
 	 resetGraph();
        }
 
        function resetEdges() {
-	 $("#eweightMin").val() = "";
-	 $("#eweightMax").val() = "";
-	 $("#etype").val() = "";
-	 $("#createdAfter").val() = "";
-	 $("#createdBefore").val() = "";
-	 $("#modifiedAfter").val() = "";
-	 $("#modifiedBefore").val() = "";
+	 $("#eweightMin").val("");
+	 $("#eweightMax").val("");
+	 $("#etype").val("");
+	 $("#createdAfter").val("");
+	 $("#createdBefore").val("");
+	 $("#modifiedAfter").val("");
+	 $("#modifiedBefore").val("");
 
 	 resetGraph();
        }
