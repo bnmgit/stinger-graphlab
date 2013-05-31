@@ -78,6 +78,83 @@ get_label_containers_json() {
 }
 
 string_t *
+get_label_stats_json(char * name) {
+  string_t * rtn = string_new_from_cstr("{\n");
+
+  kv_element_t key = kve_from_str_static(name);
+  kv_element_t * val;
+
+  if(KV_SUCCESS == kv_store_get(&labels, &key, &val)) {
+    int64_t * int_labels = kve_get_ptr(val);
+    int64_t * counts = calloc(sizeof(int64_t), STINGER_MAX_LVERTICES);
+    int64_t nv = stinger_mapping_nv(S);
+    for(int64_t v = 0; v < nv; v++) {
+      int64_t lab = int_labels[v];
+      if(lab >= 0 && lab < STINGER_MAX_LVERTICES)
+	counts[lab]++;
+    }
+
+    int64_t largest = 0;
+    int64_t largest_size = INT64_MIN;
+    int64_t smallest = 0;
+    int64_t smallest_size = INT64_MAX;
+    int64_t count = 0;
+    double mean = 0;
+    double mean_sq = 0;
+    for(int64_t v = 0; v < nv; v++) {
+      int64_t cur = counts[v];
+      if(cur) {
+	count++;
+	if(cur < smallest_size) {
+	  smallest = v;
+	  smallest_size = cur;
+	}
+	if(cur > largest_size) {
+	  largest = v;
+	  largest_size = cur;
+	}
+	mean += cur;
+	mean_sq += (cur * cur);
+      }
+    }
+    mean /= count;
+    mean_sq /= count;
+    double var = mean_sq - (mean * mean);
+
+    char stat[1024];
+
+    sprintf(stat, "\"largest\":%ld,\n", largest);
+    string_append_cstr(rtn, stat);
+
+    sprintf(stat, "\"largest_size\":%ld,\n", largest_size);
+    string_append_cstr(rtn, stat);
+
+    sprintf(stat, "\"smallest\":%ld,\n", smallest);
+    string_append_cstr(rtn, stat);
+
+    sprintf(stat, "\"smallest_size\":%ld,\n", smallest_size);
+    string_append_cstr(rtn, stat);
+
+    sprintf(stat, "\"count\":%ld,\n", count);
+    string_append_cstr(rtn, stat);
+
+    sprintf(stat, "\"mean\":%lf,\n", mean);
+    string_append_cstr(rtn, stat);
+
+    sprintf(stat, "\"mean_sq\":%lf,\n", mean_sq);
+    string_append_cstr(rtn, stat);
+
+    sprintf(stat, "\"variance\":%lf\n", var);
+    string_append_cstr(rtn, stat);
+
+    free(counts);
+  }
+  string_append_cstr(rtn, "\n}");
+
+  return rtn;
+}
+
+string_t *
 get_labels_json(char * name) {
   string_t * rtn = string_new_from_cstr("{\n");
 
@@ -284,6 +361,33 @@ begin_request_handler(struct mg_connection *conn)
       }
       if(!len || all) {
 	string_t * rslt = get_labels_json(suburi);
+	mg_printf(conn,
+	    "HTTP/1.1 200 OK\r\n"
+	    "Content-Type: text/plain\r\n"
+	    "Content-Length: %d\r\n"        // Always set Content-Length
+	    "\r\n"
+	    "%s",
+	    rslt->len, rslt->str);
+	string_free(rslt);
+	return 1;
+      }
+    }
+  }
+
+  if(0 == strncmp(request_info->uri, "/getlabelstats", 14)) {
+    const char * suburi = request_info->uri + 14;
+    if(suburi[0] == '/') suburi++;
+
+    if(0 != strlen(suburi)) {
+      char tmp[1024];
+      char * len = strchr(suburi, '/');
+      int all = 0;
+      if(len && len == (suburi + strlen(suburi - 1))) {
+	strncpy(tmp, suburi, len - suburi);
+	suburi = tmp;
+      }
+      if(!len || all) {
+	string_t * rslt = get_label_stats_json(suburi);
 	mg_printf(conn,
 	    "HTTP/1.1 200 OK\r\n"
 	    "Content-Type: text/plain\r\n"
