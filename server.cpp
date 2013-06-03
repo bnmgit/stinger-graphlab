@@ -351,10 +351,11 @@ main(int argc, char *argv[])
 
   components_init(S, STINGER_MAX_LVERTICES, components);
 
+  V_A("STINGER server listening for input on port %d, web server on port 8088.",
+      (int)port);
+
   while(1) {
-  fprintf (stderr, "foo\n");
     int accept_handle = accept(sock_handle, NULL, NULL);
-  fprintf (stderr, "foo\n");
 
     V("Ready to accept messages.");
     while(1) {
