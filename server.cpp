@@ -30,6 +30,28 @@ using namespace gt::stinger;
 
 struct community_state cstate;
 
+MTA("mta inline")
+MTA("mta expect parallel")
+static inline int64_t
+int64_fetch_add (int64_t * p, int64_t incr)
+{
+#if defined(__MTA__)
+  return int_fetch_add (p, incr);
+#elif defined(_OPENMP)
+#if defined(__GNUC__)
+  return __sync_fetch_and_add (p, incr);
+#elif defined(__INTEL_COMPILER)
+  return __sync_fetch_and_add (p, incr);
+#else
+#error "Atomics not defined..."
+#endif
+#else
+  int64_t out = *p;
+  *p += incr;
+  return out;
+#endif
+}
+
 void
 components_init(struct stinger * S, int64_t nv, int64_t * component_map);
 
@@ -38,6 +60,23 @@ components_batch(struct stinger * S, int64_t nv, int64_t * component_map);
 
 #define V_A(X,...) do { fprintf(stdout, "%s %s %d:\n\t" #X "\n", __FILE__, __func__, __LINE__, __VA_ARGS__); fflush (stdout); } while (0)
 #define V(X) V_A(X,NULL)
+
+#define ACCUM_INCR do {							\
+  int64_t where;							\
+  stinger_incr_edge_pair(S, in.type(), u, v, in.weight(), in.time());	\
+  where = int64_fetch_add (&nincr, 1);					\
+  incr[3*where+0] = u;							\
+  incr[3*where+1] = v;							\
+  incr[3*where+2] = in.weight();					\
+ } while (0)
+
+#define ACCUM_REM do {					\
+  int64_t where;					\
+  stinger_remove_edge_pair(S, del.type(), u, v);	\
+  where = int64_fetch_add (&nrem, 1);			\
+  rem[2*where+0] = u;					\
+  rem[2*where+1] = v;					\
+ } while (0)
 
 /**
 * @brief Inserts and removes the edges contained in a batch.
@@ -54,114 +93,109 @@ int
 process_batch(stinger_t * S, StingerBatch & batch,
 	      struct community_state * cstate)
 {
-  if (cstate) cstate_preproc_start (cstate);
+  int64_t nincr = 0, nrem = 0;
+  int64_t * restrict incr = NULL;
+  int64_t * restrict rem = NULL;
 
-  switch(batch.type()) {
+  incr = (int64_t*)xmalloc ((3 * batch.insertions_size () + 2 * batch.deletions_size ()) * sizeof (*incr));
+  rem = &incr[3 * batch.insertions_size ()];
 
-    case NUMBERS_ONLY: OMP("omp parallel") {
-
-      OMP("omp for nowait")
-      for(int i = 0; i < batch.insertions_size(); i++) {
-	const EdgeInsertion & in = batch.insertions(i);
-	const int64_t u = in.source ();
-	const int64_t v = in.destination ();
-	stinger_incr_edge_pair(S, in.type(), u, v, in.weight(), in.time());
-
-	if (cstate) cstate_preproc_edge_insertion (cstate, u, v);
-      }
+  OMP("omp parallel")
+    switch (batch.type ()) {
+    case NUMBERS_ONLY:
+      OMP("omp for")
+	for (size_t i = 0; i < batch.insertions_size(); i++) {
+	  const EdgeInsertion & in = batch.insertions(i);
+	  const int64_t u = in.source ();
+	  const int64_t v = in.destination ();
+	  ACCUM_INCR;
+	}
+      assert (nincr == batch.insertions_size ());
 
       OMP("omp for")
-      for(int d = 0; d < batch.deletions_size(); d++) {
-	const EdgeDeletion & del = batch.deletions(d);
-	const int64_t u = del.source ();
-	const int64_t v = del.destination ();
-	stinger_remove_edge_pair(S, del.type(), del.source(), del.destination());
+	for(size_t d = 0; d < batch.deletions_size(); d++) {
+	  const EdgeDeletion & del = batch.deletions(d);
+	  const int64_t u = del.source ();
+	  const int64_t v = del.destination ();
+	  ACCUM_REM;
+	}
+      assert (nrem == batch.deletions_size ());
+      break;
 
-	if (cstate) cstate_preproc_edge_removal (cstate, u, v);
-      }
-
-    } break;
-
-    case STRINGS_ONLY: OMP("omp parallel") {
-
-      OMP("omp for nowait")
-      for(int i = 0; i < batch.insertions_size(); i++) {
-	const EdgeInsertion & in = batch.insertions(i);
-	int64_t src, dest;
-	stinger_mapping_create(S, in.source_str().c_str(), in.source_str().length(), &src);
-	stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &dest);
-
-	stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
-
-	if (cstate) cstate_preproc_edge_insertion (cstate, src, dest);
-      }
+    case STRINGS_ONLY:
+      OMP("omp for")
+	for (size_t i = 0; i < batch.insertions_size(); i++) {
+	  const EdgeInsertion & in = batch.insertions(i);
+	  int64_t u, v;
+	  stinger_mapping_create(S, in.source_str().c_str(), in.source_str().length(), &u);
+	  stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &v);
+	  ACCUM_INCR;
+	}
+      assert (nincr == batch.insertions_size ());
 
       OMP("omp for")
-      for(int d = 0; d < batch.deletions_size(); d++) {
-	const EdgeDeletion & del = batch.deletions(d);
-	int64_t src, dest;
-	src = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
-	dest = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
+	for(size_t d = 0; d < batch.deletions_size(); d++) {
+	  const EdgeDeletion & del = batch.deletions(d);
+	  int64_t u, v;
+	  u = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
+	  v = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
 
-	if(src != -1 && dest != -1) {
-	  stinger_remove_edge_pair(S, del.type(), src, dest);
-
-	  if (cstate) cstate_preproc_edge_removal (cstate, src, dest);
+	  if(u != -1 && v != -1)
+	    ACCUM_REM;
 	}
-      }
+      assert (nrem == batch.deletions_size ());
+      break;
 
-    } break;
+    case MIXED:
+      OMP("omp for")
+	for (size_t i = 0; i < batch.insertions_size(); i++) {
+	  const EdgeInsertion & in = batch.insertions(i);
+	  int64_t u, v;
+	  if (in.has_source())
+	    u = in.source();
+	  else
+	    stinger_mapping_create (S, in.source_str().c_str(),
+				    in.source_str().length(), &u);
 
-    case MIXED: {
+	  if (in.has_destination())
+	    v = in.destination();
+	  else
+	    stinger_mapping_create(S, in.destination_str().c_str(),
+				   in.destination_str().length(), &v);
 
-      OMP("omp parallel for")
-      for(int i = 0; i < batch.insertions_size(); i++) {
-	const EdgeInsertion & in = batch.insertions(i);
-	int64_t src, dest;
-
-	if(in.has_source()) {
-	  src = in.source();
-	} else {
-	  stinger_mapping_create(S, in.source_str().c_str(), in.source_str().length(), &src);
+	  ACCUM_INCR;
 	}
+      assert (nincr == batch.insertions_size ());
 
-	if(in.has_destination()) {
-	  dest = in.destination();
-	} else {
-	  stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &dest);
+      OMP("omp for")
+	for(size_t d = 0; d < batch.deletions_size(); d++) {
+	  const EdgeDeletion & del = batch.deletions(d);
+	  int64_t u, v;
+
+	  if (del.has_source())
+	    u = del.source();
+	  else
+	    u = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
+
+	  if (del.has_destination())
+	    v = del.destination();
+	  else
+	    v = stinger_mapping_lookup(S, del.destination_str().c_str(),
+				       del.destination_str().length());
+
+	  if(u != -1 && v != -1)
+	    ACCUM_REM;
 	}
+      assert (nrem == batch.deletions_size ());
+      break;
 
-	stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
+    default:
+      abort ();
+    }
 
-	if (cstate) cstate_preproc_edge_insertion (cstate, src, dest);
-      }
+  cstate_preproc (cstate, nincr, incr, nrem, rem);
 
-      OMP("omp parallel for")
-      for(int d = 0; d < batch.deletions_size(); d++) {
-	const EdgeDeletion & del = batch.deletions(d);
-	int64_t src, dest;
-
-	if(del.has_source()) {
-	  src = del.source();
-	} else {
-	  src = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
-	}
-
-	if(del.has_destination()) {
-	  dest = del.destination();
-	} else {
-	  dest = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
-	}
-
-	if(src != -1 && dest != -1) {
-	  stinger_remove_edge_pair(S, del.type(), src, dest);
-
-	  if (cstate) cstate_preproc_edge_removal (cstate, src, dest);
-	}
-      }
-    } break;
-  }
-
+  free (incr);
   return 0;
 }
 
@@ -269,11 +303,18 @@ main(int argc, char *argv[])
 
 	  //batch.PrintDebugString();
 
-	  process_batch(S, batch, NULL);
+	  process_batch(S, batch, &cstate);
 
 	  components_batch(S, STINGER_MAX_LVERTICES, components);
 
-	  cstate_update (&cstate, S, NULL);
+	  // V_A("Number of active vertices %ld", (long)cstate.nvlist);
+
+	  cstate_update (&cstate, S);
+
+	  V_A("Number of non-singleton communities %ld/%ld, max size %ld, modularity %g",
+	      (long)cstate.n_nonsingletons, (long)cstate.cg.nv,
+	      (long)cstate.max_comm_size,
+	      cstate.modularity);
 	}
 
 	buffer -= sizeof(int64_t);

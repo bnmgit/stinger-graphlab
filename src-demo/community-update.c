@@ -49,6 +49,7 @@ static void
 init_community_state (struct community_state * cstate,
 		      const int64_t graph_nv, const int64_t ne_est)
 {
+  memset (cstate, 0, sizeof (*cstate));
   cstate->graph_nv = graph_nv;
   cstate->cmap = xmalloc (graph_nv * sizeof (*cstate->cmap));
   cstate->csize = xmalloc (graph_nv * sizeof (*cstate->csize));
@@ -228,10 +229,8 @@ cstate_dump_cmap (struct community_state * cstate, long which, long num)
 }
 
 double
-cstate_update (struct community_state * cstate, const struct stinger * S,
-               int64_t *nstep_out)
+cstate_update (struct community_state * cstate, const struct stinger * S)
 {
-  int64_t nstep = 0;
   tic ();
 
   update_el (&cstate->cg, cstate->cmap, cstate->csize,
@@ -244,7 +243,7 @@ cstate_update (struct community_state * cstate, const struct stinger * S,
 
   realloc_ws (&cstate->ws, &cstate->wslen, cstate->cg.nv, cstate->cg.ne);
 
-  nstep =
+  cstate->nstep =
     update_community (cstate->cmap, cstate->graph_nv, cstate->csize,
                       &cstate->max_csize,
                       &cstate->cg,
@@ -254,13 +253,35 @@ cstate_update (struct community_state * cstate, const struct stinger * S,
                       cstate->ws, cstate->wslen,
                       cstate->lockspace);
 
+  if (cstate->nstep > 0) {
+    const int64_t ncomm = cstate->cg.nv;
+    const int64_t * restrict csize = cstate->csize;
+    int64_t n_nonsingletons = 0;
+    int64_t max_comm_size = -1;
+    OMP("omp parallel") {
+      int64_t tmax = -1;
+      OMP("omp for reduction(+: n_nonsingletons)")
+	for (int64_t k = 0; k < ncomm; ++k) {
+	  const int64_t csz = csize[k];
+	  assert (csz > 0);
+	  if (csz > 1) ++n_nonsingletons;
+	  if (csz > tmax) tmax = csz;
+	}
+      OMP("omp critical")
+	if (tmax > max_comm_size) max_comm_size = tmax;
+    }
+    /* fprintf (stderr, "augh %ld %ld\n", (long)n_nonsingletons, (long)max_comm_size); */
+    cstate->n_nonsingletons = n_nonsingletons;
+    cstate->max_comm_size = max_comm_size;
+    cstate->modularity = eval_modularity_cgraph (cstate->cg, cstate->ws);
+  }
+
   if (cstate->cg.ne_orig > 2*cstate->cg.ne)
     shrinkwrap_graph (&cstate->cg);
 
 #if !defined(NDEBUG)
   assert (cstate_check (cstate));
 #endif
-  if (nstep_out) *nstep_out = nstep;
   return toc ();
 }
 
@@ -377,7 +398,7 @@ extract_vertex (const int64_t v, const int64_t cv, const struct stinger * restri
       mark[v] = new_c;
       csize[new_c] = 1;
     } else {
-      if (old_csize != 1) fprintf (stderr, "augh %ld %ld\n", (long)old_csize, (long)csize[cv]);
+      /* if (old_csize != 1) fprintf (stderr, "augh %ld %ld\n", (long)old_csize, (long)csize[cv]); */
       assert (old_csize == 1);
       /* Last one out stays in the community. */
       OMP("omp atomic") ++csize[cv];
@@ -432,6 +453,7 @@ extract_edges (const int64_t nvlist, const int64_t * restrict vlist, const int64
 {
   PDECL(g);
   int64_t n_new_edges = 0;
+
   OMP("omp parallel") {
 #if !defined(__MTA__)
     struct insqueue q;
@@ -449,6 +471,8 @@ extract_edges (const int64_t nvlist, const int64_t * restrict vlist, const int64
         assert (mi < new_nv);
         assert (ci >= 0 || mi >= 0);
 
+	/* fprintf (stderr, "deg(%ld) = %ld\n", (long)i, (long)stinger_outdegree_get (S, i)); */
+
         if (mi >= 0) {
           int64_t internal_cw = 0;
           int64_t internal_w = 0;
@@ -456,15 +480,19 @@ extract_edges (const int64_t nvlist, const int64_t * restrict vlist, const int64
           struct insqueue q;
           q.n = 0;
 #endif
-          STINGER_READ_ONLY_FORALL_EDGES_OF_VTX_BEGIN(S, i) {
-            const int64_t j = STINGER_RO_EDGE_DEST;
+
+          STINGER_FORALL_EDGES_OF_VTX_BEGIN(S, i) {
+            const int64_t j = STINGER_EDGE_DEST;
             const int64_t cj = cmap[j];
             const int64_t mj = mark[j];
-            const int64_t w = STINGER_RO_EDGE_WEIGHT;
+            const int64_t w = STINGER_EDGE_WEIGHT;
 
             assert (cj < new_nv);
             assert (mj < new_nv);
             assert (cj >= 0 || mj >= 0);
+
+	    /* fprintf (stderr, "considering edge %ld (%ld) - %ld (%ld)\n", */
+	    /* 	     (long)i, (long)ci, (long)j, (long)cj); */
 
             /* Remove old edges. */
             if (ci != cj) {
@@ -487,7 +515,7 @@ extract_edges (const int64_t nvlist, const int64_t * restrict vlist, const int64
                 ++n_new_edges;
             }
 
-          } STINGER_READ_ONLY_FORALL_EDGES_OF_VTX_END();
+          } STINGER_FORALL_EDGES_OF_VTX_END();
 
           if (internal_cw) D(g, ci) -= internal_cw;
           D(g, mi) = internal_w;
@@ -589,6 +617,7 @@ update_el (struct el * el,
 
   new_nv = el->nv;
   extract_vertices (nvlist, vlist, cmap, S, mark, &new_nv, csize);
+
   if (realloc_graph (el, new_nv, el->ne_orig))
     abort ();
   /* nactvtx_trace[ntrace] = new_nv; */
@@ -601,7 +630,7 @@ update_el (struct el * el,
 
   assert (el->nv == new_nv);
 
-  #if !defined(NDEBUG)
+#if !defined(NDEBUG)
   {
     struct el g = *el;
     CDECL(g);
@@ -666,42 +695,60 @@ append_to_vlist (int64_t * restrict nvlist,
   return out;
 }
 
-void
-cstate_preproc_start (struct community_state * restrict cstate)
+void cstate_preproc (struct community_state * restrict cstate,
+		     const int64_t nincr, const int64_t * restrict incr,
+		     const int64_t nrem, const int64_t * restrict rem)
 {
-  const int64_t nvlist = cstate->nvlist;
+  assert (!nrem); /* XXX: To fix... need weight to remove... */
+  const int64_t * restrict cmap = cstate->cmap;
+  int64_t nvlist = cstate->nvlist;
   int64_t * restrict vlist = cstate->vlist;
   int64_t * restrict mark = cstate->mark;
-  for (int64_t k = 0; k < nvlist; ++k) mark[vlist[k]] = -1;
-  cstate->nvlist = 0;
-}
+  int64_t * restrict d = cstate->cg.d;
+  int64_t n_new_edges = 0;
 
-void
-cstate_preproc_edge_insertion (struct community_state * restrict cstate,
-			       const int64_t i, const int64_t j)
-{
-  const int64_t * restrict cmap = cstate->cmap;
-  assert (i >= 0);
-  assert (j >= 0);
-  assert (i < cstate->graph_nv);
-  assert (j < cstate->graph_nv);
-  if (cmap[i] != cmap[j]) {
-    append_to_vlist (&cstate->nvlist, cstate->vlist, cstate->mark, i);
-    append_to_vlist (&cstate->nvlist, cstate->vlist, cstate->mark, j);
+  OMP("omp parallel") {
+    struct insqueue q;
+    q.n = 0;
+
+    OMP("omp for")
+      for (int64_t k = 0; k < nvlist; ++k) mark[vlist[k]] = -1;
+
+    OMP("omp for reduction(+: n_new_edges)")
+      for (int64_t k = 0; k < nincr; ++k) {
+	const int64_t i = incr[3*k+0];
+	const int64_t j = incr[3*k+1];
+	const int64_t w = incr[3*k+2];
+	const int64_t ci = cmap[i];
+	const int64_t cj = cmap[j];
+	if (ci != cj)
+	  ++n_new_edges;
+      }
+
+    OMP("omp single") {
+      if (realloc_graph (&cstate->cg, cstate->cg.nv, cstate->cg.ne + n_new_edges))
+	abort ();
+    }
+
+    OMP("omp for reduction(+: n_new_edges)")
+      for (int64_t k = 0; k < nincr; ++k) {
+	const int64_t i = incr[3*k+0];
+	const int64_t j = incr[3*k+1];
+	const int64_t w = incr[3*k+2];
+	const int64_t ci = cmap[i];
+	const int64_t cj = cmap[j];
+	if (ci != cj) {
+	  append_to_vlist (&nvlist, vlist, mark, i);
+	  append_to_vlist (&nvlist, vlist, mark, j);
+	  enqueue (&q, ci, cj, w, &cstate->cg);
+	} else
+	  OMP("omp atomic") d[ci] += w;
+      }
+    qflush (&q, &cstate->cg);
   }
-}
-
-void
-cstate_preproc_edge_removal (struct community_state * restrict cstate,
-			     const int64_t i, const int64_t j)
-{
-  const int64_t * restrict cmap = cstate->cmap;
-  assert (i >= 0);
-  assert (j >= 0);
-  assert (i < cstate->graph_nv);
-  assert (j < cstate->graph_nv);
-  if (cmap[i] == cmap[j]) {
-    append_to_vlist (&cstate->nvlist, cstate->vlist, cstate->mark, i);
-    append_to_vlist (&cstate->nvlist, cstate->vlist, cstate->mark, j);
+  cstate->nvlist = nvlist;
+  if (n_new_edges) {
+    realloc_ws (&cstate->ws, &cstate->wslen, cstate->cg.nv_orig, cstate->cg.ne_orig);
+    contract_self (&cstate->cg, cstate->ws);
   }
 }

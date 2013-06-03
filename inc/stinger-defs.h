@@ -16,13 +16,13 @@
 #define STINGER_MAX_LVERTICES (1L<<27)
 #else
 /* much smaller for quick testing */
-#define STINGER_MAX_LVERTICES (1L<<20)
+#define STINGER_MAX_LVERTICES (1L<<16)
 #endif
 #endif
 /** Edges per edge block */
-#define STINGER_EDGEBLOCKSIZE 32
+#define STINGER_EDGEBLOCKSIZE 16
 /** Number of edge types */
-#define STINGER_NUMETYPES 5
+#define STINGER_NUMETYPES 2
 /** Number of vertex types (with names) */
 #define STINGER_NUMVTYPES 128
 

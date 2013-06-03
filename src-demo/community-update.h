@@ -26,6 +26,12 @@ struct community_state {
 
   int alg_score, alg_match;
   int64_t comm_limit;
+
+  /* Stats... */
+  int64_t nstep;
+  int64_t n_nonsingletons;
+  int64_t max_comm_size;
+  double modularity;
 };
 
 void finalize_community_state (struct community_state * cstate);
@@ -34,14 +40,11 @@ void init_empty_community_state (struct community_state * cstate, const int64_t 
 double init_and_compute_community_state (struct community_state * cstate, struct el * g);
 double init_and_read_community_state (struct community_state * cstate, int64_t graph_nv, const char *cg_name, const char *cmap_name);
 void cstate_dump_cmap (struct community_state * cstate, long which, long num);
-double cstate_update (struct community_state * cstate, const struct stinger * S,
-                      int64_t *nstep_out);
+double cstate_update (struct community_state * cstate, const struct stinger * S);
 
-void cstate_preproc_start (struct community_state * restrict cstate);
-void cstate_preproc_edge_insertion (struct community_state * restrict cstate,
-				    const int64_t i, const int64_t j);
-void cstate_preproc_edge_removal (struct community_state * restrict cstate,
-				  const int64_t i, const int64_t j);
+void cstate_preproc (struct community_state * restrict,
+		     const int64_t, const int64_t * restrict,
+		     const int64_t, const int64_t * restrict);
 
 #if !defined(INSQUEUE_SIZE)
 #if defined(__MTA__)

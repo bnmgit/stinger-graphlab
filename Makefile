@@ -106,15 +106,18 @@ obj/%.o: src/%.c | objdirs
 $(PROTOBUFLIB):	lib/protobuf-2.5.0/config.status
 	make -C lib/protobuf-2.5.0
 
-lib/protobuf-2.5.0/config.status:	lib/protobuf-2.5.0/configure
+lib/protobuf-2.5.0/config.status:	lib/protobuf-2.5.0/configure lib/protobuf-2.5.0/Makefile.in
 	(cd lib/protobuf-2.5.0; \
 	./configure "CC=$(CC)" "CXX=$(CXX)" "CFLAGS=$(CFLAGS)" --disable-shared --enable-static)
+
+lib/protobuf-2.5.0/Makefile.in:	lib/protobuf-2.5.0/Makefile.am
+	(cd lib/protobuf-2.5.0; ./autogen.sh)
 
 .PHONY:	clean
 clean:
 	rm -rf main gen-streams workflow $(EXAMPLES) $(BLECHIO) $(BLECHIOGEN) \
 		$(MAINPL) $(GENSTREAMSPL) libstinger.a $(STINGER_ALL_OBJ) inc/fragments/*.h `find . -name "*.dSYM"` \
-		`find obj/ -name *.o` `find lib/ -name *.o`
+		`find obj/ -name *.o` `find lib/ -name *.o` $(STINGER_DEMO_OBJ)
 
 ######################################
 # TESTS                              #
