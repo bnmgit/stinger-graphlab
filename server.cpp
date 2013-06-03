@@ -309,11 +309,14 @@ main(int argc, char *argv[])
 
 	  process_batch(S, batch, &cstate);
 
-	  components_batch(S, STINGER_MAX_LVERTICES, components);
+#pragma omp parallel sections
+	  {
+#pragma omp section
+	    components_batch(S, STINGER_MAX_LVERTICES, components);
 
-	  // V_A("Number of active vertices %ld", (long)cstate.nvlist);
-
-	  cstate_update (&cstate, S);
+#pragma omp section
+	    cstate_update (&cstate, S);
+	  }
 
 	  processing_time = tic () - processing_time_start;
 
