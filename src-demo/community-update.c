@@ -46,16 +46,15 @@ realloc_ws (int64_t **ws, size_t *wslen, int64_t nv, int64_t ne)
 }
 
 static void
-init_community_state (struct community_state * cstate, int64_t graph_nv,
-                      struct el * g)
+init_community_state (struct community_state * cstate,
+		      const int64_t graph_nv, const int64_t ne_est)
 {
-  const int64_t nv = g->nv;
-  const int64_t ne = g->ne;
-
   cstate->graph_nv = graph_nv;
   cstate->cmap = xmalloc (graph_nv * sizeof (*cstate->cmap));
   cstate->csize = xmalloc (graph_nv * sizeof (*cstate->csize));
   cstate->mark = xmalloc (graph_nv * sizeof (*cstate->mark));
+  cstate->vlist = xmalloc (graph_nv * sizeof (*cstate->vlist));
+  cstate->nvlist = 0;
 #if defined(_OPENMP)
   cstate->lockspace = xmalloc (graph_nv * sizeof (*cstate->lockspace));
 #endif
@@ -76,10 +75,7 @@ init_community_state (struct community_state * cstate, int64_t graph_nv,
   memset (&cstate->hist, 0, sizeof (cstate->hist));
   cstate->ws = NULL;
   cstate->wslen = 0;
-  realloc_ws (&cstate->ws, &cstate->wslen, nv, ne);
-
-  cstate->cg = *g;
-  memset (g, 0, sizeof (*g)); /* Own. */
+  realloc_ws (&cstate->ws, &cstate->wslen, graph_nv, ne_est);
 
   cstate->alg_score = ALG_CNM;
   cstate->alg_match = ALG_GREEDY_MAXIMAL;
@@ -89,6 +85,26 @@ init_community_state (struct community_state * cstate, int64_t graph_nv,
     else fprintf (stderr, "Invalid COMM_LIMIT: %s\n", getenv ("COMM_LIMIT"));
   } else
     cstate->comm_limit = INT64_MAX;
+}
+
+static void
+init_community_state_from_el (struct community_state * cstate,
+			      const int64_t graph_nv, struct el * g)
+{
+  init_community_state (cstate, graph_nv, (g->ne < 2*graph_nv? g->ne : 2*graph_nv));
+
+  cstate->cg = *g;
+  memset (g, 0, sizeof (*g)); /* Own. */
+}
+
+void
+init_empty_community_state (struct community_state * cstate,
+			    const int64_t graph_nv, const int64_t ne_est)
+{
+  init_community_state (cstate, graph_nv, ne_est);
+
+  cstate->cg = alloc_graph (graph_nv, ne_est);
+  cstate->cg.ne = 0;
 }
 
 void
@@ -101,10 +117,12 @@ finalize_community_state (struct community_state * cstate)
       omp_destroy_lock (&cstate->lockspace[i]);
   free (cstate->lockspace);
 #endif
+  free (cstate->vlist);
   free (cstate->mark);
   free (cstate->csize);
   free (cstate->cmap);
   free (cstate->ws);
+  memset (cstate, 0, sizeof (*cstate));
 }
 
 int
@@ -167,7 +185,7 @@ cstate_forcibly_update_csize (struct community_state *cstate)
 double
 init_and_compute_community_state (struct community_state * cstate, struct el * g)
 {
-  init_community_state (cstate, g->nv, g);
+  init_community_state_from_el (cstate, g->nv, g);
   tic ();
   community (cstate->cmap, &cstate->cg,
     cstate->alg_score, cstate->alg_match, 0, 0,
@@ -189,7 +207,7 @@ init_and_read_community_state (struct community_state * cstate, int64_t graph_nv
   struct el el;
   tic ();
   needs_bs = el_snarf_graph (cg_name, &el);
-  init_community_state (cstate, graph_nv, &el);
+  init_community_state_from_el (cstate, graph_nv, &el);
   xmt_luc_snapin (cmap_name, cstate->cmap, cstate->graph_nv * sizeof (*cstate->cmap));
   if (needs_bs)
     comm_bs64_n (graph_nv, cstate->cmap);
@@ -610,4 +628,80 @@ update_el (struct el * el,
 #endif
   realloc_ws (ws, wslen, el->nv_orig, el->ne_orig);
   contract_self (el, *ws);
+}
+
+MTA("mta inline") MTA("mta expect parallel context")
+static inline int
+append_to_vlist (int64_t * restrict nvlist,
+                 int64_t * restrict vlist,
+                 int64_t * restrict mark /* |V|, init to -1 */,
+                 const int64_t i)
+{
+  int out = 0;
+  if (mark[i] < 0) {
+    int64_t where;
+    int64_t marki;
+#if defined(__MTA__)
+    marki = readfe (&mark[i]);
+#else
+    marki = mark[i];
+#endif
+    if (marki == -1) { /* Superfluous test sequentially */
+      if (bool_int64_compare_and_swap (&mark[i], -1, -2)) {
+        /* Own it. */
+        where = int64_fetch_add (nvlist, 1);
+        marki = where;
+        vlist[where] = i;
+        out = 1;
+#if !defined(__MTA__)
+        mark[i] = where;
+#endif
+      }
+    }
+#if defined(__MTA__)
+    writeef (&mark[i], marki);
+#endif
+  }
+
+  return out;
+}
+
+void
+cstate_preproc_start (struct community_state * restrict cstate)
+{
+  const int64_t nvlist = cstate->nvlist;
+  int64_t * restrict vlist = cstate->vlist;
+  int64_t * restrict mark = cstate->mark;
+  for (int64_t k = 0; k < nvlist; ++k) mark[vlist[k]] = -1;
+  cstate->nvlist = 0;
+}
+
+void
+cstate_preproc_edge_insertion (struct community_state * restrict cstate,
+			       const int64_t i, const int64_t j)
+{
+  const int64_t * restrict cmap = cstate->cmap;
+  assert (i >= 0);
+  assert (j >= 0);
+  assert (i < cstate->graph_nv);
+  assert (j < cstate->graph_nv);
+  if (cmap[i] != cmap[j]) {
+    append_to_vlist (&cstate->nvlist, cstate->vlist, cstate->mark, i);
+    append_to_vlist (&cstate->nvlist, cstate->vlist, cstate->mark, j);
+  }
+}
+
+void
+cstate_preproc_edge_removal (struct community_state * restrict cstate,
+			     const int64_t i, const int64_t j)
+{
+  const int64_t * restrict cmap = cstate->cmap;
+  assert (i >= 0);
+  assert (j >= 0);
+  assert (i < cstate->graph_nv);
+  assert (j < cstate->graph_nv);
+  if (cmap[i] == cmap[j]) {
+    append_to_vlist (&cstate->nvlist, cstate->vlist, cstate->mark, i);
+    append_to_vlist (&cstate->nvlist, cstate->vlist, cstate->mark, j);
+  }
 }

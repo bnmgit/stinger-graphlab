@@ -1,6 +1,10 @@
 #if !defined(COMMUNITY_UPDATE_HEADER_)
 #define COMMUNITY_UPDATE_HEADER_
 
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
+
 struct community_state {
   int64_t graph_nv;
   size_t wslen;
@@ -8,6 +12,8 @@ struct community_state {
   int64_t * restrict cmap;
   int64_t * restrict csize;
   int64_t * restrict mark;
+  int64_t * restrict vlist;
+  int64_t nvlist;
 #if defined(_OPENMP)
   omp_lock_t * restrict lockspace;
 #else
@@ -24,12 +30,19 @@ struct community_state {
 
 void finalize_community_state (struct community_state * cstate);
 int cstate_check (struct community_state *cstate);
+void init_empty_community_state (struct community_state * cstate, const int64_t graph_nv, const int64_t ne_est);
 double init_and_compute_community_state (struct community_state * cstate, struct el * g);
 double init_and_read_community_state (struct community_state * cstate, int64_t graph_nv, const char *cg_name, const char *cmap_name);
 void cstate_dump_cmap (struct community_state * cstate, long which, long num);
 double cstate_update (struct community_state * cstate, const struct stinger * S,
                       const int64_t nvlist, const int64_t * vlist,
                       int64_t *nstep_out);
+
+void cstate_preproc_start (struct community_state * restrict cstate);
+void cstate_preproc_edge_insertion (struct community_state * restrict cstate,
+				    const int64_t i, const int64_t j);
+void cstate_preproc_edge_removal (struct community_state * restrict cstate,
+				  const int64_t i, const int64_t j);
 
 #if !defined(INSQUEUE_SIZE)
 #if defined(__MTA__)
