@@ -2094,7 +2094,7 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
   /* fprintf (stderr, "in weight: %ld\n", global_gwgt); */
 #endif
 
-  tic ();
+  /* tic (); */
   OMP("omp parallel") {
     int64_t local_max_weight = 0;
     struct el gv = *g;
@@ -2138,7 +2138,7 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
         if (csz < tcsz) csz = tcsz;
     }
   
-  other_time += toc ();
+  /* other_time += toc (); */
 
   nsteps = 0;
   while (nsteps < max_nsteps && csz <= maxsz && g->nv >= maxnum &&
@@ -2154,7 +2154,7 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
 
     /* score */
     if (verbose) fprintf (stderr, "\nstep %ld\n\tscore ...", (long)nsteps+1);
-    tic ();
+    /* tic (); */
     switch (score_alg) {
     case ALG_HEAVIEST_EDGE:
       score_heaviest_edge (score, *g);
@@ -2176,7 +2176,7 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
       score_drop (score, min_degree, max_degree, *g, ws_inner);
     if (maxsz < INT64_MAX)
       score_drop_size (score, c, csize, maxsz, *g);
-    score_time += toc ();
+    /* score_time += toc (); */
     double max_score = -HUGE_VAL;
     OMP("omp parallel") {
       double tmax_score = -HUGE_VAL;
@@ -2231,7 +2231,7 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
 
     /* match */
     if (verbose) fprintf (stderr, "\tmatch ...");
-    tic ();
+    /* tic (); */
     old_nv = g->nv;
     switch (match_alg) {
     case ALG_GREEDY_PASS:
@@ -2257,7 +2257,7 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
       fprintf (stderr, "ugh-match\n");
       abort ();
     };
-    match_time += toc ();
+    /* match_time += toc (); */
     if (alg_is_matching) {
       if (decimate)
         decimate_matching (*g, rowstart, rowend, m, score);
@@ -2303,16 +2303,16 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
       }
       new_nv = convert_el_tree_to_relabel (*g, m, ws_inner);
     }
-    aftermatch_time += toc ();
+    /* aftermatch_time += toc (); */
 
     /* contract */
     if (verbose) fprintf (stderr, "\tcontract ...");
-    tic ();
+    /* tic (); */
     contract (g, new_nv, m, rowstart, rowend, ws_inner);
     OMP("omp parallel for") MTA_NODEP MTA_STREAMS
       for (intvtx_t i = 0; i < nv_orig; ++i)
         if (c[i] >= 0) c[i] = m[c[i]];
-    contract_time += toc ();
+    /* contract_time += toc (); */
     if (verbose) fprintf (stderr, "done %ld\n", (long)g->nv);
 #if !defined(NDEBUG)
     contractedwgt = calc_weight (*g);
@@ -2340,7 +2340,7 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
       }
 #endif
 
-    tic ();
+    /* tic (); */
 
     if (old_nv == g->nv) {
       if (verbose)
@@ -2393,7 +2393,7 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
     }
 
     ++nsteps;
-    other_time += toc ();
+    /* other_time += toc (); */
   }
 
   *max_csize = csz;

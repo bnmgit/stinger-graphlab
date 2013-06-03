@@ -117,10 +117,10 @@ static double last_tic = -1.0;
 /**
 * @brief Start the timer
 */
-void
+double
 tic (void)
 {
-  last_tic = timer ();
+  return last_tic = timer ();
 }
 
 /**

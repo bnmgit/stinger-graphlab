@@ -1,5 +1,6 @@
 extern "C" {
 #include "stinger.h"
+#include "timer.h"
 #include "web.h"
 #include "xmalloc.h"
 #include "src-demo/defs.h"
@@ -264,6 +265,7 @@ main(int argc, char *argv[])
 
   int64_t * components = (int64_t *)xmalloc(sizeof(int64_t) * STINGER_MAX_LVERTICES);
   double * centralities = (double *)xmalloc(sizeof(double) * STINGER_MAX_LVERTICES);
+  double processing_time;
 
   init_empty_community_state (&cstate, STINGER_MAX_LVERTICES, 2*STINGER_MAX_LVERTICES);
 
@@ -300,8 +302,10 @@ main(int argc, char *argv[])
 	StingerBatch batch;
 
 	if(batch.ParseFromString((const char *)buffer)) {
-
+	  double processing_time_start;
 	  //batch.PrintDebugString();
+
+	  processing_time_start = tic ();
 
 	  process_batch(S, batch, &cstate);
 
@@ -311,10 +315,14 @@ main(int argc, char *argv[])
 
 	  cstate_update (&cstate, S);
 
+	  processing_time = tic () - processing_time_start;
+
 	  V_A("Number of non-singleton communities %ld/%ld, max size %ld, modularity %g",
 	      (long)cstate.n_nonsingletons, (long)cstate.cg.nv,
 	      (long)cstate.max_csize,
 	      cstate.modularity);
+
+	  V_A("Total processing time: %g", processing_time);
 	}
 
 	buffer -= sizeof(int64_t);
