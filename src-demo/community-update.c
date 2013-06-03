@@ -229,14 +229,14 @@ cstate_dump_cmap (struct community_state * cstate, long which, long num)
 
 double
 cstate_update (struct community_state * cstate, const struct stinger * S,
-               const int64_t nvlist, const int64_t * vlist,
                int64_t *nstep_out)
 {
   int64_t nstep = 0;
   tic ();
 
   update_el (&cstate->cg, cstate->cmap, cstate->csize,
-             S, nvlist, vlist, cstate->mark, &cstate->ws, &cstate->wslen);
+             S, cstate->nvlist, cstate->vlist, cstate->mark,
+	     &cstate->ws, &cstate->wslen);
 
 #if !defined(NDEBUG)
   assert (cstate_check (cstate));

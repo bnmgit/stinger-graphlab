@@ -152,7 +152,7 @@ shrinkwrap_graph (struct el * el)
     el->nv_orig = el->nv;
   }
 
-  if (el->ne < el->ne_orig) {
+  if (el->ne && el->ne < el->ne_orig) {
     tmp = xrealloc (el->el, 3 * el->ne * sizeof (*el->el));
     if (!tmp) { err = 2; goto errout; }
     el->el = tmp;

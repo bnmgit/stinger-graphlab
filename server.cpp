@@ -272,6 +272,8 @@ main(int argc, char *argv[])
 	  process_batch(S, batch, NULL);
 
 	  components_batch(S, STINGER_MAX_LVERTICES, components);
+
+	  cstate_update (&cstate, S, NULL);
 	}
 
 	buffer -= sizeof(int64_t);

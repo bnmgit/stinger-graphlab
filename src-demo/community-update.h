@@ -35,7 +35,6 @@ double init_and_compute_community_state (struct community_state * cstate, struct
 double init_and_read_community_state (struct community_state * cstate, int64_t graph_nv, const char *cg_name, const char *cmap_name);
 void cstate_dump_cmap (struct community_state * cstate, long which, long num);
 double cstate_update (struct community_state * cstate, const struct stinger * S,
-                      const int64_t nvlist, const int64_t * vlist,
                       int64_t *nstep_out);
 
 void cstate_preproc_start (struct community_state * restrict cstate);
