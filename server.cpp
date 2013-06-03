@@ -30,7 +30,7 @@ components_init(struct stinger * S, int64_t nv, int64_t * component_map);
 void
 components_batch(struct stinger * S, int64_t nv, int64_t * component_map);
 
-#define V_A(X,...) fprintf(stdout, "%s %s %d:\n\t" #X "\n", __FILE__, __func__, __LINE__, __VA_ARGS__);
+#define V_A(X,...) do { fprintf(stdout, "%s %s %d:\n\t" #X "\n", __FILE__, __func__, __LINE__, __VA_ARGS__); fflush (stdout); } while (0)
 #define V(X) V_A(X,NULL)
 
 static inline int64_t
@@ -137,7 +137,8 @@ append_to_vlist (int64_t * restrict nvlist,
 int
 process_batch(stinger_t * S, StingerBatch & batch,
 	      int64_t * nvlist, int64_t * restrict vlist,
-	      int64_t * restrict mark)
+	      int64_t * restrict mark,
+	      const int64_t * restrict map)
 {
 
   *nvlist = 0;
@@ -152,8 +153,11 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	const int64_t u = in.source ();
 	const int64_t v = in.destination ();
 	stinger_incr_edge_pair(S, in.type(), u, v, in.weight(), in.time());
-	append_to_vlist (nvlist, vlist, mark, u);
-	append_to_vlist (nvlist, vlist, mark, v);
+
+	if (!map || (map[u] != map[v])) {
+	  append_to_vlist (nvlist, vlist, mark, u);
+	  append_to_vlist (nvlist, vlist, mark, v);
+	}
       }
 
       OMP("omp for")
@@ -162,8 +166,11 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	const int64_t u = del.source ();
 	const int64_t v = del.destination ();
 	stinger_remove_edge_pair(S, del.type(), del.source(), del.destination());
-	append_to_vlist (nvlist, vlist, mark, u);
-	append_to_vlist (nvlist, vlist, mark, v);
+
+	if (!map || (map[u] == map[v])) {
+	  append_to_vlist (nvlist, vlist, mark, u);
+	  append_to_vlist (nvlist, vlist, mark, v);
+	}
       }
 
     } break;
@@ -178,8 +185,11 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &dest);
 
 	stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
-	append_to_vlist (nvlist, vlist, mark, src);
-	append_to_vlist (nvlist, vlist, mark, dest);
+
+	if (!map || (map[src] != map[dest])) {
+	  append_to_vlist (nvlist, vlist, mark, src);
+	  append_to_vlist (nvlist, vlist, mark, dest);
+	}
       }
 
       OMP("omp for")
@@ -191,8 +201,11 @@ process_batch(stinger_t * S, StingerBatch & batch,
 
 	if(src != -1 && dest != -1) {
 	  stinger_remove_edge_pair(S, del.type(), src, dest);
-	  append_to_vlist (nvlist, vlist, mark, src);
-	  append_to_vlist (nvlist, vlist, mark, dest);
+
+	  if (!map || (map[src] == map[dest])) {
+	    append_to_vlist (nvlist, vlist, mark, src);
+	    append_to_vlist (nvlist, vlist, mark, dest);
+	  }
 	}
       }
 
@@ -218,8 +231,11 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	}
 
 	stinger_incr_edge_pair(S, in.type(), src, dest, in.weight(), in.time());
-	append_to_vlist (nvlist, vlist, mark, src);
-	append_to_vlist (nvlist, vlist, mark, dest);
+
+	if (!map || (map[src] != map[dest])) {
+	  append_to_vlist (nvlist, vlist, mark, src);
+	  append_to_vlist (nvlist, vlist, mark, dest);
+	}
       }
 
       OMP("omp parallel for")
@@ -241,8 +257,11 @@ process_batch(stinger_t * S, StingerBatch & batch,
 
 	if(src != -1 && dest != -1) {
 	  stinger_remove_edge_pair(S, del.type(), src, dest);
-	  append_to_vlist (nvlist, vlist, mark, src);
-	  append_to_vlist (nvlist, vlist, mark, dest);
+
+	  if (!map || (map[src] == map[dest])) {
+	    append_to_vlist (nvlist, vlist, mark, src);
+	    append_to_vlist (nvlist, vlist, mark, dest);
+	  }
 	}
       }
     } break;
@@ -333,7 +352,9 @@ main(int argc, char *argv[])
   components_init(S, STINGER_MAX_LVERTICES, components);
 
   while(1) {
+  fprintf (stderr, "foo\n");
     int accept_handle = accept(sock_handle, NULL, NULL);
+  fprintf (stderr, "foo\n");
 
     V("Ready to accept messages.");
     while(1) {
@@ -359,7 +380,7 @@ main(int argc, char *argv[])
 
 	  //batch.PrintDebugString();
 
-	  process_batch(S, batch, &nvlist, vlist, mark);
+	  process_batch(S, batch, &nvlist, vlist, mark, NULL);
 
 	  components_batch(S, STINGER_MAX_LVERTICES, components);
 
@@ -379,6 +400,13 @@ main(int argc, char *argv[])
   }
 
   return 0;
+}
+
+void
+communities_init(struct stinger * S, int64_t nv, int64_t * community_map) {
+  OMP ("omp parallel for")
+    for (uint64_t i = 0; i < nv; i++)
+      community_map[i] = i;
 }
 
 void

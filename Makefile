@@ -27,7 +27,7 @@ STINGER_LIB_OBJ	= $(subst src,obj,$(subst .c,.o,$(STINGER_LIB_SRC)))
 STINGER_LIB_INCLUDE = -Ilib/mongoose -Ilib/string/inc -Ilib/fmemopen/inc -Ilib/int-ht-seq/inc -Ilib/int-hm-seq/inc -Ilib/rapidjson/include -Ilib/kv_store/inc
 
 #EXTERNAL  XXX: needs fixed to use libtool, etc.
-PROTOBUFLIB = lib/protobuf-2.5.0/src/.libs/libprotobuf.so
+PROTOBUFLIB = lib/protobuf-2.5.0/src/.libs/libprotobuf.a
 
 #FRAGMENTS - text files to be embedded as a string via a header
 FRAGMENT     = 
@@ -40,9 +40,11 @@ STINGER_ALL_OBJ	= $(STINGER_CORE_OBJ) $(STINGER_UTIL_OBJ) $(STINGER_ALG_OBJ) $(S
 
 CFLAGS+= -Ilib/protobuf-2.5.0/src -Iinc/alg -Iinc/stream -Iinc/util -Isrc/proto -Iinc/core -Iinc -I./ $(STINGER_LIB_INCLUDE)
 
-LDFLAGS+= -Llib/protobuf-2.5.0/src/.libs
-LDLIBS+= -lprotobuf
+#LDFLAGS+= -Llib/protobuf-2.5.0/src/.libs
+#LDLIBS+= -lprotobuf
 
+STINGER_DEMO_SRC = src-demo/community-update.c src-demo/community.c src-demo/graph-el.c src-demo/sorts.c src-demo/xmt-luc.cc
+STINGER_DEMO_OBJ = $(subst .c,.o,$(subst .cc,.o,$(STINGER_DEMO_SRC)))
 
 inc/fragments/%.h: inc/fragments/%
 	head -n 1 $^ > $@
@@ -80,7 +82,7 @@ lib/%:
 src/proto/stinger-batch.pb.cc: src/proto/stinger-batch.proto
 	protoc --cpp_out=./ src/proto/stinger-batch.proto
 
-server:	server.cpp src/proto/stinger-batch.pb.cc $(STINGER_ALL_OBJ) $(BLECHIO) $(PROTOBUFLIB)
+server:	server.cpp src/proto/stinger-batch.pb.cc $(STINGER_ALL_OBJ) $(STINGER_DEMO_OBJ) $(BLECHIO) $(PROTOBUFLIB)
 	$(CXX) $(MAINPLFLAG) $(CPPFLAGS) $(CFLAGS) -o $@ $^ \
 		$(LDFLAGS) $(LDLIBS)
 
@@ -106,7 +108,7 @@ $(PROTOBUFLIB):	lib/protobuf-2.5.0/config.status
 
 lib/protobuf-2.5.0/config.status:	lib/protobuf-2.5.0/configure
 	(cd lib/protobuf-2.5.0; \
-	./configure "CC=$(CC)" "CXX=$(CXX)" "CFLAGS=$(CFLAGS)" --enable-shared --enable-static)
+	./configure "CC=$(CC)" "CXX=$(CXX)" "CFLAGS=$(CFLAGS)" --disable-shared --enable-static)
 
 .PHONY:	clean
 clean:
