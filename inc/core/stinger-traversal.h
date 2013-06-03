@@ -181,10 +181,10 @@
 /* source vertex based */
 #define STINGER_READ_ONLY_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_)      \
   do {                                                                  \
-    struct stinger_eb * ebpool_priv = STINGER_->ebpool->ebpool; \
-    struct stinger_eb * restrict ebp__ = ebpool;                        \
+    const struct stinger * restrict S__ = (STINGER_);			\
+    const struct stinger_eb * restrict ebp__ = S__->ebpool->ebpool;	\
     const int64_t source__ = (VTX_);                                    \
-    int64_t ebp_k__ = (STINGER_)->LVA[source__].edges;                  \
+    int64_t ebp_k__ = S__->vertices->vertices[source__].edges;		\
     while(ebp_k__) {                                                    \
       MTA("mta assert parallel")                                        \
         for(uint64_t i__ = 0; i__ < ebp__[ebp_k__].high; i__++) {       \
@@ -202,11 +202,11 @@
 
 #define STINGER_READ_ONLY_FORALL_EDGES_OF_TYPE_OF_VTX_BEGIN(STINGER_,TYPE_,VTX_)      \
   do {                                                                  \
-    struct stinger_eb * ebpool_priv = STINGER_->ebpool->ebpool; \
-    struct stinger_eb * restrict ebp__ = ebpool;                        \
+    const struct stinger * restrict S__ = (STINGER_);			\
+    const struct stinger_eb * restrict ebp__ = S__->ebpool->ebpool;	\
     const int64_t source__ = (VTX_);                                    \
     const int64_t etype__ = (TYPE_);                                    \
-    int64_t ebp_k__ = (STINGER_)->LVA[source__].edges;                  \
+    int64_t ebp_k__ = S__->vertices->vertices[source__].edges;		\
     while(ebp_k__ && ebp__[ebp_k__].etype != etype__)                   \
       ebp_k__ = ebp__[ebp_k__].next;                                    \
     while(ebp_k__ && ebp__[ebp_k__].etype == etype__) {                 \
@@ -228,12 +228,12 @@
 
 #define STINGER_READ_ONLY_PARALLEL_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_) \
   do {                                                                  \
-    struct stinger_eb * ebpool_priv = STINGER_->ebpool->ebpool; \
+    const struct stinger * restrict S__ = (STINGER_);			\
+    const struct stinger_eb * restrict ebp__ = s__->ebpool->ebpool;	\
+    const int64_t source__ = (VTX_);					\
     OMP("omp parallel") {                                               \
-      struct stinger_eb * restrict ebp__ = ebpool;                      \
-      const int64_t source__ = (VTX_);                                  \
       OMP("omp single") {                                               \
-        int64_t ebp_k__ = (STINGER_)->LVA[source__].edges;              \
+        int64_t ebp_k__ = S__->LVA[source__].edges;			\
         while(ebp_k__) {                                                \
           OMP("omp task untied firstprivate(ebp_k__)")                  \
             MTA("mta assert parallel")                                  \
@@ -254,13 +254,14 @@
 
 #define STINGER_READ_ONLY_PARALLEL_FORALL_EDGES_OF_TYPE_OF_VTX_BEGIN(STINGER_,VTX_) \
   do {                                                                  \
-    struct stinger_eb * ebpool_priv = STINGER_->ebpool->ebpool; \
+    const struct stinger * restrict S__ = (STINGER_);			\
+    struct stinger_eb * ebpool_priv = S__->ebpool->ebpool;		\
     OMP("omp parallel") {                                               \
       struct stinger_eb * restrict ebp__ = ebpool;                      \
       const int64_t source__ = (VTX_);                                  \
       const int64_t etype__ = (TYPE_);                                  \
       OMP("omp single") {                                               \
-        int64_t ebp_k__ = (STINGER_)->LVA[source__].edges;              \
+        int64_t ebp_k__ = S__->LVA[source__].edges;			\
         while(ebp_k__ && ebp__[ebp_k__].etype != etype__)               \
           ebp_k__ = ebp__[ebp_k__].next;                                \
         while(ebp_k__ && ebp__[ebp_k__].etype == etype__) {             \
@@ -285,9 +286,8 @@
 /* all edges of a given type */
 #define STINGER_READ_ONLY_FORALL_EDGES_BEGIN(STINGER_,TYPE_)            \
       do {                                                              \
-    struct stinger_eb * ebpool_priv = STINGER_->ebpool->ebpool; \
-        struct stinger_eb * restrict ebp__ = ebpool;                    \
         const struct stinger * restrict S__ = (STINGER_);               \
+        struct stinger_eb * restrict ebp__ = S__->ebpool->ebpool;	\
         const int64_t etype__ = (TYPE_);                                \
         for(uint64_t p__ = 0; p__ < S__->ETA[(TYPE_)].high; p__++) {    \
           int64_t ebp_k__ = S__->ETA[(TYPE_)].blocks[p__];              \
@@ -295,7 +295,7 @@
           const int64_t type__ = ebp__[ebp_k__].etype;                  \
           for(uint64_t i__ = 0; i__ < ebp__[ebp_k__].high; i__++) {     \
             if(!stinger_eb_is_blank(&ebp__[ebp_k__], i__)) {            \
-              constt struct stinger_edge local_current_edge__ = current_eb__->edges[i__]; \
+              const struct stinger_edge local_current_edge__ = ebp__[ebp_k__].edges[i__]; \
               if(local_current_edge__.neighbor >= 0) {
 
 #define STINGER_READ_ONLY_FORALL_EDGES_END()                            \
@@ -308,11 +308,10 @@
 
 #define STINGER_READ_ONLY_PARALLEL_FORALL_EDGES_BEGIN(STINGER_,TYPE_)   \
       do {                                                              \
-    struct stinger_eb * ebpool_priv = STINGER_->ebpool->ebpool; \
+        const struct stinger * restrict S__ = (STINGER_);             \
+        const int64_t etype__ = (TYPE_);                              \
+	const struct stinger_eb * restrict ebp__ = S__->ebpool->ebpool;	\
         OMP("omp parallel") {                                           \
-          struct stinger_eb * restrict ebp__ = ebpool;                  \
-          const struct stinger * restrict S__ = (STINGER_);             \
-          const int64_t etype__ = (TYPE_);                              \
           OMP("omp single") {                                           \
             for(uint64_t p__ = 0; p__ < S__->ETA[(TYPE_)].high; p__++) { \
               int64_t ebp_k__ = S__->ETA[(TYPE_)].blocks[p__];          \
@@ -321,7 +320,7 @@
               OMP("omp task untied firstprivate(ebp_k__)")              \
                 for(uint64_t i__ = 0; i__ < ebp__[ebp_k__].high; i__++) { \
                   if(!stinger_eb_is_blank(&ebp__[ebp_k__], i__)) {      \
-                    constt struct stinger_edge local_current_edge__ = current_eb__->edges[i__]; \
+		    const struct stinger_edge local_current_edge__ = ebp__[ebp_k__].edges[i__]; \
                     if(local_current_edge__.neighbor >= 0) {
 
 #define STINGER_READ_ONLY_PARALLEL_FORALL_EDGES_END()                   \

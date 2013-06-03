@@ -401,14 +401,14 @@ components_batch(struct stinger * S, int64_t nv, int64_t * component_map) {
     /* For all edges in the STINGER graph of type 0 in parallel, attempt to assign
        lesser component IDs to neighbors with greater component IDs */
     for(uint64_t t = 0; t < STINGER_NUMETYPES; t++) {
-      STINGER_PARALLEL_FORALL_EDGES_BEGIN (S, t) {
-      if (component_map[STINGER_EDGE_DEST] <
-          component_map[STINGER_EDGE_SOURCE]) {
-	  component_map[STINGER_EDGE_SOURCE] = component_map[STINGER_EDGE_DEST];
+      STINGER_READ_ONLY_PARALLEL_FORALL_EDGES_BEGIN (S, t) {
+	if (component_map[STINGER_RO_EDGE_DEST] <
+	    component_map[STINGER_RO_EDGE_SOURCE]) {
+	  component_map[STINGER_RO_EDGE_SOURCE] = component_map[STINGER_RO_EDGE_DEST];
 	  changed++;
 	}
       }
-      STINGER_PARALLEL_FORALL_EDGES_END ();
+      STINGER_READ_ONLY_PARALLEL_FORALL_EDGES_END ();
     }
 
     /* if nothing changed */
