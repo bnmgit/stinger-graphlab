@@ -250,7 +250,7 @@ cstate_update (struct community_state * cstate, const struct stinger * S)
                       &cstate->cg,
                       cstate->alg_score, cstate->alg_match, 0, 0,
                       cstate->comm_limit, 1,
-                      -1, -1, -1, 0, 1.1, 1, &cstate->hist,
+                      -1, -1, -1, 0, 1.1, 0, &cstate->hist,
                       cstate->ws, cstate->wslen,
                       cstate->lockspace);
 
