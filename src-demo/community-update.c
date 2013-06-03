@@ -704,7 +704,7 @@ void cstate_preproc (struct community_state * restrict cstate,
   int64_t nvlist = cstate->nvlist;
   int64_t * restrict vlist = cstate->vlist;
   int64_t * restrict mark = cstate->mark;
-  int64_t * restrict d = cstate->cg.d;
+  intvtx_t * restrict d = cstate->cg.d;
   int64_t n_new_edges = 0;
 
   OMP("omp parallel") {
