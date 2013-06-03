@@ -246,6 +246,7 @@ cstate_update (struct community_state * cstate, const struct stinger * S)
   cstate->nstep =
     update_community (cstate->cmap, cstate->graph_nv, cstate->csize,
                       &cstate->max_csize,
+                      &cstate->n_nonsingletons,
                       &cstate->cg,
                       cstate->alg_score, cstate->alg_match, 0, 0,
                       cstate->comm_limit, 1,
@@ -254,25 +255,6 @@ cstate_update (struct community_state * cstate, const struct stinger * S)
                       cstate->lockspace);
 
   if (cstate->nstep > 0) {
-    const int64_t ncomm = cstate->cg.nv;
-    const int64_t * restrict csize = cstate->csize;
-    int64_t n_nonsingletons = 0;
-    int64_t max_comm_size = -1;
-    OMP("omp parallel") {
-      int64_t tmax = -1;
-      OMP("omp for reduction(+: n_nonsingletons)")
-	for (int64_t k = 0; k < ncomm; ++k) {
-	  const int64_t csz = csize[k];
-	  assert (csz > 0);
-	  if (csz > 1) ++n_nonsingletons;
-	  if (csz > tmax) tmax = csz;
-	}
-      OMP("omp critical")
-	if (tmax > max_comm_size) max_comm_size = tmax;
-    }
-    /* fprintf (stderr, "augh %ld %ld\n", (long)n_nonsingletons, (long)max_comm_size); */
-    cstate->n_nonsingletons = n_nonsingletons;
-    cstate->max_comm_size = max_comm_size;
     cstate->modularity = eval_modularity_cgraph (cstate->cg, cstate->ws);
   }
 

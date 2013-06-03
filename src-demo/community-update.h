@@ -22,15 +22,13 @@ struct community_state {
   struct community_hist hist; /* = {{0.0}, 0, 0}; */
   struct el cg;
 
-  int64_t max_csize;
-
   int alg_score, alg_match;
   int64_t comm_limit;
 
   /* Stats... */
   int64_t nstep;
   int64_t n_nonsingletons;
-  int64_t max_comm_size;
+  int64_t max_csize;
   double modularity;
 };
 

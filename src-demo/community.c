@@ -2001,6 +2001,7 @@ int64_t
 update_community (int64_t * restrict cmap_global, const int64_t nv_global,
                   int64_t * restrict csize,
                   int64_t * restrict max_csize,
+		  int64_t * restrict n_nonsingletons_out,
 
                   struct el * restrict g /* destructive */,
                   const int score_alg, const int match_alg, const int double_self,
@@ -2045,6 +2046,7 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
   int64_t * ws_inner;
 
   int64_t csz = -1;
+  int64_t n_nonsingletons = 0;
   intvtx_t old_nv;
   int64_t nsteps = 0;
   const int use_cov = covlevel > 0;
@@ -2357,6 +2359,7 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
 
     assert (g->nv == new_nv);
     csz = 0;
+    n_nonsingletons = 0;
     int64_t totsz = 0;
     OMP("omp parallel") {
       int64_t local_csz = 0;
@@ -2375,11 +2378,13 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
           cmap_global[k] = newc;
           /* int64_fetch_add (&ws_inner[newc], 1); */
         }
-      OMP("omp for reduction(+: totsz)") MTA_STREAMS
+      OMP("omp for reduction(+: totsz, n_nonsingletons)") MTA_STREAMS
         for (intvtx_t i = 0; i < new_nv; ++i) {
-          if (ws_inner[i] > local_csz) local_csz = ws_inner[i];
-          csize[i] = ws_inner[i];
-          totsz += csize[i];
+	  const intvtx_t z = ws_inner[i];
+          if (z > local_csz) local_csz = z;
+          csize[i] = z;
+	  if (z > 1) ++n_nonsingletons;
+          totsz += z;
         }
       OMP("omp critical") {
         if (local_csz > csz) csz = local_csz;
@@ -2392,6 +2397,7 @@ update_community (int64_t * restrict cmap_global, const int64_t nv_global,
   }
 
   *max_csize = csz;
+  *n_nonsingletons_out = n_nonsingletons;
   *hist = h;
   global_score_time = score_time;
   global_match_time = match_time;

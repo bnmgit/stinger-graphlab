@@ -39,6 +39,7 @@ int64_t
 update_community (int64_t * restrict cmap_global, const int64_t nv_global,
                   int64_t * restrict csize,
                   int64_t * restrict max_csize,
+                  int64_t * restrict n_nonsingletons_out,
 
                   struct el * restrict g /* destructive */,
                   const int score_alg, const int match_alg, const int double_self,

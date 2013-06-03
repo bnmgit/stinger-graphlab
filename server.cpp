@@ -313,7 +313,7 @@ main(int argc, char *argv[])
 
 	  V_A("Number of non-singleton communities %ld/%ld, max size %ld, modularity %g",
 	      (long)cstate.n_nonsingletons, (long)cstate.cg.nv,
-	      (long)cstate.max_comm_size,
+	      (long)cstate.max_csize,
 	      cstate.modularity);
 	}
 
