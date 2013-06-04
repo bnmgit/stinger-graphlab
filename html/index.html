@@ -292,27 +292,32 @@
 	d3.json("/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val(),
 	  function(error, graph) {
 	    if(!error) {
-	      graph.vertices.forEach(function(d) {
+	      graph.vertices.forEach(function(d, i) {
 		if(!(d.vid in nodemap)) {
 		  nodemap[d.vid] = d;
-		  graphjson.vertices.push(d);
+		} else {
+		  graph.vertices[i] = nodemap[d.vid];
 		}
 	      });
 
-	      graph.edges.forEach(function(d) {
-		e = [d.type, Math.min(d.src,d.dest), Math.max(d.src,d.dest)];
-		if(!(e.join() in linkmap)) {
-		  linkmap[e.join()] = d;
+	      graph.edges.forEach(function(d, i) {
+		e = [d.type, Math.min(d.src,d.dest), Math.max(d.src,d.dest)].join();
+		if(!(e in linkmap)) {
+		  linkmap[e] = d;
 		  graphjson.edges.push(d);
 		  d.source = nodemap[d.src];
 		  d.target = nodemap[d.dest];
+		} else {
+		  graph.edges[i] = linkmap[e];
 		}
 	      });
+
+	      graphjson = graph;
 
 	      resetGraph();
 	      curTimeout = window.setTimeout(updateGraph, 3000);
 	    } else {
-	      updateGraph();
+	      curTimeout = window.setTimeout(updateGraph, 3000);
 	    }
 	  });
       }
