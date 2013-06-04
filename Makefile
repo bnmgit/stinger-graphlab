@@ -80,13 +80,13 @@ lib/%:
 	cd `echo $@ | sed -e 's/\(lib\/[^\/]*\)\/.*$$/\1/'`; make
 
 src/proto/stinger-batch.pb.cc: src/proto/stinger-batch.proto
-	protoc --cpp_out=./ src/proto/stinger-batch.proto
+	lib/protobuf*/src/protoc --cpp_out=./ src/proto/stinger-batch.proto
 
-server:	server.cpp src/proto/stinger-batch.pb.cc $(STINGER_ALL_OBJ) $(STINGER_DEMO_OBJ) $(BLECHIO) $(PROTOBUFLIB)
+server:	server.cpp src/proto/stinger-batch.pb.cc src/proto/send_rcv.cpp $(STINGER_ALL_OBJ) $(STINGER_DEMO_OBJ) $(BLECHIO) $(PROTOBUFLIB)
 	$(CXX) $(MAINPLFLAG) $(CPPFLAGS) $(CFLAGS) -o $@ $^ \
 		$(LDFLAGS) $(LDLIBS)
 
-client_demo:	client_demo.cpp src/proto/stinger-batch.pb.cc $(STINGER_ALL_OBJ) $(BLECHIO) $(PROTOBUFLIB)
+client_demo:	client_demo.cpp src/proto/stinger-batch.pb.cc src/proto/send_rcv.cpp $(STINGER_ALL_OBJ) $(BLECHIO) $(PROTOBUFLIB)
 	$(CXX) $(MAINPLFLAG) $(CPPFLAGS) $(CFLAGS) -o $@ $^ \
 		$(LDFLAGS) $(LDLIBS)
 

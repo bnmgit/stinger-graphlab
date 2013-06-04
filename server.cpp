@@ -10,6 +10,7 @@ extern "C" {
 }
 
 #include "stinger-batch.pb.h"
+#include "send_rcv.h"
 
 #if !defined(MTA)
 #define MTA(x)
@@ -257,7 +258,7 @@ main(int argc, char *argv[])
     exit(-1);
   }
 
-  uint8_t * buffer = (uint8_t *)malloc(buffer_size);
+  const char * buffer = (char *)malloc(buffer_size);
   if(!buffer) {
     perror("Buffer alloc failed.\n");
     exit(-1);
@@ -284,56 +285,41 @@ main(int argc, char *argv[])
     V("Ready to accept messages.");
     while(1) {
 
-      ssize_t bytes_received = 0;
+      StingerBatch batch;
+      if(recv_message(accept_handle, batch)) {
 
-      while(bytes_received < sizeof(int64_t))
-	bytes_received += recv(accept_handle, buffer, sizeof(int64_t) - bytes_received, 0);
+	V_A("Received message of size %ld", (long)batch.ByteSize());
 
-      int64_t message_size = *((int64_t *)buffer);
-      if(message_size > 0) {
-	buffer += sizeof(int64_t);
+	double processing_time_start;
+	//batch.PrintDebugString();
 
-	bytes_received = 0;
+	processing_time_start = tic ();
 
-	while(bytes_received < message_size)
-	  bytes_received += recv(accept_handle, buffer, message_size - bytes_received, 0);
-
-	V_A("Received message of size %ld", (long)message_size);
-	StingerBatch batch;
-
-	if(batch.ParseFromString((const char *)buffer)) {
-	  double processing_time_start;
-	  //batch.PrintDebugString();
-
-	  processing_time_start = tic ();
-
-	  process_batch(S, batch, &cstate);
+	process_batch(S, batch, &cstate);
 
 #pragma omp parallel sections
-	  {
+	{
 #pragma omp section
-	    components_batch(S, STINGER_MAX_LVERTICES, components);
+	  components_batch(S, STINGER_MAX_LVERTICES, components);
 
 #pragma omp section
-	    cstate_update (&cstate, S);
-	  }
-
-	  processing_time = tic () - processing_time_start;
-
-	  V_A("Number of non-singleton communities %ld/%ld, max size %ld, modularity %g",
-	      (long)cstate.n_nonsingletons, (long)cstate.cg.nv,
-	      (long)cstate.max_csize,
-	      cstate.modularity);
-
-	  V_A("Total processing time: %g", processing_time);
+	  cstate_update (&cstate, S);
 	}
 
-	buffer -= sizeof(int64_t);
-      } else if(message_size == -1) {
-	break;
+	processing_time = tic () - processing_time_start;
+
+	V_A("Number of non-singleton communities %ld/%ld, max size %ld, modularity %g",
+	    (long)cstate.n_nonsingletons, (long)cstate.cg.nv,
+	    (long)cstate.max_csize,
+	    cstate.modularity);
+
+	V_A("Total processing time: %g", processing_time);
+
+	if(!batch.keep_alive())
+	  break;
+
       } else {
-	V_A("Received message of size %ld", (long)message_size);
-	abort();
+	V("ERROR Parsing failed.\n");
       }
     }
   }

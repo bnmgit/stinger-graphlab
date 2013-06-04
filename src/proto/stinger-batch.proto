@@ -34,6 +34,7 @@ enum BatchType {
 
 message StingerBatch {
   optional int64 version = 1 [default = 1];
+  optional bool keep_alive = 7 [default = false];
 
   repeated EdgeInsertion insertions = 3;
   repeated EdgeDeletion deletions = 4;

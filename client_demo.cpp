@@ -5,6 +5,7 @@ extern "C" {
 }
 
 #include "stinger-batch.pb.h"
+#include "send_rcv.h"
 
 #define RAPIDJSON_ASSERT(X) if (!(X)) { throw std::exception(); }
 #include "rapidjson/document.h"
@@ -200,12 +201,19 @@ main(int argc, char *argv[])
 
       case '?':
       case 'h': {
-	printf("Usage:    %s [-p src_port] [-d dst_port] [-a server_addr] [-b buffer_size] [-s for strings] [-x batch_size] [-y num_batches] <input_csv>\n", argv[0]);
+	printf("Usage:    %s [-p src_port] [-d dst_port] [-a server_addr] [-b buffer_size] [-s for strings] [-x batch_size] [-y num_batches] [-i in_seconds] [-o out_seconds] [-j] <input file>\n", argv[0]);
 	printf("Defaults: src_port: %d dest_port: %d server: localhost buffer_size: %lu use_strings: %d\n", src_port, dst_port, (unsigned long) buffer_size, use_strings);
 	printf("\nCSV file format is is_delete,source,dest,weight,time where weight and time are\n"
 		 "optional 64-bit integers and source and dest are either strings or\n"
 		 "64-bit integers depending on options flags. is_delete should be 0 for edge\n"
-		 "insertions and 1 for edge deletions.\n");
+		 "insertions and 1 for edge deletions.\n"
+		 "\n"
+		 "-j turns on JSON parsing mode, which expects a JSON twitter file rather than CSV\n"
+		 "   this file will be turned into a graph of mentions\n"
+		 "-i controls how many seconds of the input file will be read into one batch\n"
+		 "-o controls how often batches will be sent in seconds\n"
+		 "   using both -i and -o allows you to control the playback rate of the file (with -i 1 -o 1\n"
+		 "   being read one second of Twitter data and send it once per second)\n");
 	exit(0);
       } break;
     }
@@ -327,6 +335,7 @@ main(int argc, char *argv[])
       batch.SerializeToString(&out_buffer);
 
       int64_t len = out_buffer.size();
+
       write(sock_handle, &len, sizeof(int64_t));
       write(sock_handle, out_buffer.c_str(), len);
 
@@ -357,6 +366,7 @@ main(int argc, char *argv[])
       StingerBatch batch;
       batch.set_make_undirected(true);
       batch.set_type(STRINGS_ONLY);
+      batch.set_keep_alive(true);
 
       int64_t tweet_time = 0;
       int64_t e = 0;
@@ -391,10 +401,6 @@ main(int argc, char *argv[])
       V_A("Sending %ld tweets.", e);
       //batch.PrintDebugString();
 
-      std::string out_buffer;
-
-      batch.SerializeToString(&out_buffer);
-
       int64_t micro = output_rate * 1000000 - toc();
       if(micro > 0) {
 	V_A("Sleeping for %ld", micro);
@@ -403,11 +409,9 @@ main(int argc, char *argv[])
 	E_A("Can't keep up! %ld", micro);
       }
 
-      V_A("Sending size %d", out_buffer.size());
+      V_A("Sending size %d", batch.ByteSize());
 
-      int64_t len = out_buffer.size();
-      write(sock_handle, &len, sizeof(int64_t));
-      write(sock_handle, out_buffer.c_str(), len);
+      send_message(sock_handle, batch);
 
       if((batch_num >= num_batches) && (num_batches != -1)) {
 	break;
@@ -416,8 +420,11 @@ main(int argc, char *argv[])
       }
     }
 
-    int64_t len = -1;
-    write(sock_handle, &len, sizeof(int64_t));
+    StingerBatch batch;
+    batch.set_make_undirected(true);
+    batch.set_type(STRINGS_ONLY);
+    batch.set_keep_alive(false);
+    send_message(sock_handle, batch);
   }
 
   free(buffer);
