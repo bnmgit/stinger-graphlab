@@ -41,8 +41,13 @@ void cstate_dump_cmap (struct community_state * cstate, long which, long num);
 double cstate_update (struct community_state * cstate, const struct stinger * S);
 
 void cstate_preproc (struct community_state * restrict,
-		     const int64_t, const int64_t * restrict,
-		     const int64_t, const int64_t * restrict);
+                     const struct stinger *,
+                     const int64_t, const int64_t * restrict,
+                     const int64_t, const int64_t * restrict);
+
+void cstate_preproc_acts (struct community_state * restrict,
+                          const struct stinger *,
+                          const int64_t, const int64_t * restrict);
 
 #if !defined(INSQUEUE_SIZE)
 #if defined(__MTA__)

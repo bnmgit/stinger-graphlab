@@ -3,6 +3,9 @@
 #define _LARGEFILE64_SOURCE 1
 #define _FILE_OFFSET_BITS 64
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "stinger-atomics.h"
 #include "stinger.h"
 #include "timer.h"
@@ -70,8 +73,8 @@ init_community_state (struct community_state * cstate,
     OMP("omp parallel")
       for (intvtx_t i = 0; i < graph_nv; ++i) {
         omp_init_lock (&cstate->lockspace[i]);
-#endif
     }
+#endif
   }
   memset (&cstate->hist, 0, sizeof (cstate->hist));
   cstate->ws = NULL;
@@ -187,6 +190,7 @@ double
 init_and_compute_community_state (struct community_state * cstate, struct el * g)
 {
   init_community_state_from_el (cstate, g->nv, g);
+  realloc_ws (&cstate->ws, &cstate->wslen, cstate->cg.nv, cstate->cg.ne);
   tic ();
   community (cstate->cmap, &cstate->cg,
     cstate->alg_score, cstate->alg_match, 0, 0,
@@ -649,39 +653,35 @@ append_to_vlist (int64_t * restrict nvlist,
                  const int64_t i)
 {
   int out = 0;
+
+  /* for (int64_t k = 0; k < *nvlist; ++k) { */
+  /*   assert (vlist[k] >= 0); */
+  /*   if (k != mark[vlist[k]]) */
+  /*     fprintf (stderr, "wtf mark[vlist[%ld] == %ld] == %ld\n", */
+  /*              (long)k, (long)vlist[k], (long)mark[vlist[k]]); */
+  /*   assert (mark[vlist[k]] == k); */
+  /* } */
+
   if (mark[i] < 0) {
     int64_t where;
-    int64_t marki;
-#if defined(__MTA__)
-    marki = readfe (&mark[i]);
-#else
-    marki = mark[i];
-#endif
-    if (marki == -1) { /* Superfluous test sequentially */
-      if (bool_int64_compare_and_swap (&mark[i], -1, -2)) {
-        /* Own it. */
-        where = int64_fetch_add (nvlist, 1);
-        marki = where;
-        vlist[where] = i;
-        out = 1;
-#if !defined(__MTA__)
-        mark[i] = where;
-#endif
-      }
+    if (bool_int64_compare_and_swap (&mark[i], -1, -2)) {
+      assert (mark[i] == -2);
+      /* Own it. */
+      where = int64_fetch_add (nvlist, 1);
+      mark[i] = where;
+      vlist[where] = i;
+      out = 1;
     }
-#if defined(__MTA__)
-    writeef (&mark[i], marki);
-#endif
   }
 
   return out;
 }
 
 void cstate_preproc (struct community_state * restrict cstate,
-		     const int64_t nincr, const int64_t * restrict incr,
-		     const int64_t nrem, const int64_t * restrict rem)
+                     const struct stinger * S,
+                     const int64_t nincr, const int64_t * restrict incr,
+                     const int64_t nrem, const int64_t * restrict rem)
 {
-  assert (!nrem); /* XXX: To fix... need weight to remove... */
   const int64_t * restrict cmap = cstate->cmap;
   int64_t nvlist = cstate->nvlist;
   int64_t * restrict vlist = cstate->vlist;
@@ -695,16 +695,26 @@ void cstate_preproc (struct community_state * restrict cstate,
 
     OMP("omp for")
       for (int64_t k = 0; k < nvlist; ++k) mark[vlist[k]] = -1;
+    OMP("omp single") nvlist = 0;
 
     OMP("omp for reduction(+: n_new_edges)")
       for (int64_t k = 0; k < nincr; ++k) {
-	const int64_t i = incr[3*k+0];
-	const int64_t j = incr[3*k+1];
-	const int64_t w = incr[3*k+2];
-	const int64_t ci = cmap[i];
-	const int64_t cj = cmap[j];
-	if (ci != cj)
-	  ++n_new_edges;
+        const int64_t i = incr[3*k+0];
+        const int64_t j = incr[3*k+1];
+        const int64_t ci = cmap[i];
+        const int64_t cj = cmap[j];
+        if (ci != cj)
+          ++n_new_edges;
+      }
+
+    OMP("omp for reduction(+: n_new_edges)")
+      for (int64_t k = 0; k < nrem; ++k) {
+        const int64_t i = rem[2*k+0];
+        const int64_t j = rem[2*k+1];
+        const int64_t ci = cmap[i];
+        const int64_t cj = cmap[j];
+        if (ci != cj)
+          ++n_new_edges;
       }
 
     OMP("omp single") {
@@ -712,19 +722,133 @@ void cstate_preproc (struct community_state * restrict cstate,
 	abort ();
     }
 
-    OMP("omp for reduction(+: n_new_edges)")
+    OMP("omp for")
       for (int64_t k = 0; k < nincr; ++k) {
-	const int64_t i = incr[3*k+0];
-	const int64_t j = incr[3*k+1];
-	const int64_t w = incr[3*k+2];
-	const int64_t ci = cmap[i];
-	const int64_t cj = cmap[j];
-	if (ci != cj) {
-	  append_to_vlist (&nvlist, vlist, mark, i);
-	  append_to_vlist (&nvlist, vlist, mark, j);
-	  enqueue (&q, ci, cj, w, &cstate->cg);
-	} else
-	  OMP("omp atomic") d[ci] += w;
+        const int64_t i = incr[3*k+0];
+        const int64_t j = incr[3*k+1];
+        const int64_t w = incr[3*k+2];
+        const int64_t ci = cmap[i];
+        const int64_t cj = cmap[j];
+        if (ci != cj) {
+          append_to_vlist (&nvlist, vlist, mark, i);
+          append_to_vlist (&nvlist, vlist, mark, j);
+          enqueue (&q, ci, cj, w, &cstate->cg);
+        } else
+          OMP("omp atomic") d[ci] += w;
+      }
+
+    OMP("omp for")
+      for (int64_t k = 0; k < nrem; ++k) {
+        const int64_t i = rem[2*k+0];
+        const int64_t j = rem[2*k+1];
+        const int64_t ci = cmap[i];
+        const int64_t cj = cmap[j];
+        if (ci != cj) {
+          append_to_vlist (&nvlist, vlist, mark, i);
+          append_to_vlist (&nvlist, vlist, mark, j);
+        }
+        /* Find the weight to remove.  ugh. */
+        STINGER_FORALL_EDGES_OF_VTX_BEGIN (S, i) {
+          if (STINGER_EDGE_DEST == j) {
+            if (ci != cj)
+              enqueue (&q, ci, cj, -STINGER_EDGE_WEIGHT, &cstate->cg);
+            else
+              OMP("omp atomic") d[ci] -= STINGER_EDGE_WEIGHT;
+            break;
+            /* XXX: Technically, could have many of different types. */
+          }
+        } STINGER_FORALL_EDGES_OF_VTX_END ();
+      }
+
+    qflush (&q, &cstate->cg);
+  }
+  cstate->nvlist = nvlist;
+  if (n_new_edges) {
+    realloc_ws (&cstate->ws, &cstate->wslen, cstate->cg.nv_orig, cstate->cg.ne_orig);
+    contract_self (&cstate->cg, cstate->ws);
+  }
+}
+
+void cstate_preproc_acts (struct community_state * restrict cstate,
+                          const struct stinger * S,
+                          const int64_t nact, const int64_t * restrict act)
+{
+  const int64_t * restrict cmap = cstate->cmap;
+  int64_t nvlist = cstate->nvlist;
+  int64_t * restrict vlist = cstate->vlist;
+  int64_t * restrict mark = cstate->mark;
+  intvtx_t * restrict d = cstate->cg.d;
+  int64_t n_new_edges = 0;
+
+  OMP("omp parallel") {
+    struct insqueue q;
+    q.n = 0;
+
+    OMP("omp for")
+      for (int64_t k = 0; k < nvlist; ++k) mark[vlist[k]] = -1;
+    OMP("omp single") nvlist = 0;
+
+    OMP("omp for reduction(+: n_new_edges)")
+      for (int64_t k = 0; k < nact; ++k) {
+        int64_t i = act[2*k+0];
+        int64_t j = act[2*k+1];
+        const int isdel = i < 0;
+
+        if (isdel) { i = ~i; j = ~j; }
+
+        assert (i < cstate->graph_nv);
+        assert (j < cstate->graph_nv);
+
+        const int64_t ci = cmap[i];
+        const int64_t cj = cmap[j];
+
+        if (ci != cj)
+          ++n_new_edges;
+      }
+
+    OMP("omp single") {
+      if (realloc_graph (&cstate->cg, cstate->cg.nv, cstate->cg.ne + n_new_edges))
+	abort ();
+    }
+
+    OMP("omp for")
+      for (int64_t k = 0; k < nact; ++k) {
+        int64_t i = act[2*k+0];
+        int64_t j = act[2*k+1];
+        const int64_t w = 1;
+        const int isdel = i < 0;
+
+        if (isdel) { i = ~i; j = ~j; }
+
+        const int64_t ci = cmap[i];
+        const int64_t cj = cmap[j];
+
+        if ((!isdel && ci != cj) || (isdel && ci == cj)) {
+          append_to_vlist (&nvlist, vlist, mark, i);
+          assert (nvlist <= cstate->graph_nv);
+          append_to_vlist (&nvlist, vlist, mark, j);
+          assert (nvlist <= cstate->graph_nv);
+        }
+
+        if (!isdel) {
+          if (ci != cj)
+            enqueue (&q, ci, cj, w, &cstate->cg);
+          else
+            OMP("omp atomic") d[ci] += w;
+        } else {
+          /* Find the weight to remove.  ugh. */
+          /* fprintf (stderr, "searching for weight of %ld %ld\n", (long)i, (long)j); */
+          STINGER_FORALL_EDGES_OF_VTX_BEGIN (S, i) {
+            if (STINGER_EDGE_DEST == j) {
+              if (ci != cj)
+                enqueue (&q, ci, cj, -STINGER_EDGE_WEIGHT, &cstate->cg);
+              else
+                OMP("omp atomic") d[ci] -= w;
+              break;
+              /* XXX: Technically, could have many of different types. */
+            }
+          } STINGER_FORALL_EDGES_OF_VTX_END ();
+        }
       }
     qflush (&q, &cstate->cg);
   }

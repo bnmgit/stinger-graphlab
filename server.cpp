@@ -194,7 +194,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
       abort ();
     }
 
-  cstate_preproc (cstate, nincr, incr, nrem, rem);
+  cstate_preproc (cstate, S, nincr, incr, nrem, rem);
 
   free (incr);
   return 0;
