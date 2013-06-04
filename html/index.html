@@ -123,6 +123,7 @@
 
     <script type="text/javascript">
 
+/*
       var chart = null;
       var chartdata = {};
       var ordermap = {};
@@ -187,6 +188,7 @@
 	});
       }
 
+*/
 
       /***************************
       * initialization and globals
@@ -215,10 +217,27 @@
 	.linkStrength(1)
 	.size([width, height]); 
 
-      var svg = d3.select("graph").append("svg") 
+      var svg = d3.select("graph").append("svg:svg") 
 	.attr("class", "theGraph")
 	.attr("width", width) 
-	.attr("height", height); 
+	.attr("height", height)
+	.attr("pointer-events", "all")
+	.append('svg:g')
+	.call(d3.behavior.zoom().on("zoom", redraw))
+	.append('svg:g');
+
+      svg.append('svg:rect')
+	.attr('width', 4000)
+	.attr('height', 4000)
+	.attr('fill', 'rgba(0,0,0,0)');
+
+      function redraw() {
+	console.log("here", d3.event.translate, d3.event.scale);
+	svg.attr("transform",
+	    "translate(" + d3.event.translate + ")"
+	    + " scale(" + d3.event.scale + ")");
+      }
+
 
       d3.json("/getlabels/",
 	function(error, data) {
