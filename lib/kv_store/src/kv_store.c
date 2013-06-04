@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 
 #if SAFETY_ON
 #define SAFETY(X) X
@@ -66,10 +67,26 @@ new_kve_from_i64(int64_t i) {
 }
 
 kv_element_t *
+new_kve_from_i64ptr (int64_t * i) {
+  kv_element_t * rtn = malloc(sizeof(kv_element_t));
+  rtn->type = KV_I64PTR;
+  rtn->data.i64ptr = i;
+  return rtn;
+}
+
+kv_element_t *
 new_kve_from_dbl(double i) {
   kv_element_t * rtn = malloc(sizeof(kv_element_t));
   rtn->type = KV_DBL;
   rtn->data.dbl = i;
+  return rtn;
+}
+
+kv_element_t *
+new_kve_from_dblptr (double * i) {
+  kv_element_t * rtn = malloc(sizeof(kv_element_t));
+  rtn->type = KV_DBLPTR;
+  rtn->data.dblptr = i;
   return rtn;
 }
 
@@ -90,7 +107,7 @@ new_kve_from_str(string_t * i) {
 }
 
 kv_element_t *
-new_kve_from_str_static(char * s) {
+new_kve_from_str_static(const char * s) {
   kv_element_t * rtn = malloc(sizeof(kv_element_t));
   rtn->type = KV_STR_STATIC;
   rtn->data.str.str = s;
@@ -104,8 +121,18 @@ kve_from_i64(int64_t i) {
 }
 
 kv_element_t
+kve_from_i64ptr (int64_t * i) {
+  return (kv_element_t) {.type = KV_I64PTR, .data.i64ptr = i};
+}
+
+kv_element_t
 kve_from_dbl(double i) {
   return (kv_element_t) {.type = KV_DBL, .data.dbl = i};
+}
+
+kv_element_t
+kve_from_dblptr (double * i) {
+  return (kv_element_t) {.type = KV_DBLPTR, .data.dblptr = i};
 }
 
 kv_element_t
@@ -119,33 +146,65 @@ kve_from_str(string_t * i) {
 }
 
 kv_element_t
-kve_from_str_static(char * i) {
+kve_from_str_static(const char * i) {
   return (kv_element_t) {.type = KV_STR_STATIC, .data.str.str = i, .data.str.len = strlen(i), .data.str.max = strlen(i)};
 }
 
 int64_t
 kve_get_i64(kv_element_t * e) {
-  return e->data.i64;
+  if (e->type == KV_I64)
+    return e->data.i64;
+  else if (e->type == KV_DBLPTR)
+    return kve_get_i64ptr (e);
+  return -1;
+}
+
+int64_t
+kve_get_i64ptr (kv_element_t * e) {
+  if (e->type == KV_I64PTR) {
+    const int64_t * p = e->data.i64ptr;
+    if (p) return *p;
+  }
+  return -1;
 }
 
 double
 kve_get_dbl(kv_element_t * e) {
-  return e->data.dbl;
+  if (e->type == KV_DBL)
+    return e->data.dbl;
+  else if (e->type == KV_DBLPTR)
+    return kve_get_dblptr (e);
+  return NAN;
+}
+
+double
+kve_get_dblptr (kv_element_t * e) {
+  if (e->type == KV_DBLPTR) {
+    const double *p = e->data.dblptr;
+    if (p) return *p;
+  }
+  return NAN;
 }
 
 void *
 kve_get_ptr(kv_element_t * e) {
-  return e->data.ptr;
+  if (e->type == KV_PTR)
+    return e->data.ptr;
+  return NULL;
 }
 
 string_t *
 kve_get_str(kv_element_t * e) {
-  return &e->data.str;
+  if (e->type == KV_STR || e->type == KV_STR_STATIC)
+    return &e->data.str;
+  return NULL;
 }
 
 char *
 kve_get_cstr(kv_element_t * e) {
-  return e->data.str.str;
+  if (e->type == KV_STR || e->type == KV_STR_STATIC)
+    return e->data.str.str;
+  return NULL;
 }
 
 kv_return_t 
@@ -246,7 +305,7 @@ kv_tracker_str(kv_element_t * track, string_t * i) {
 }
 
 kv_element_t *
-kv_tracker_str_static(kv_element_t * track, char * i) {
+kv_tracker_str_static(kv_element_t * track, const char * i) {
   kv_element_t * rtn = new_kve_from_str_static(i);
   kv_tracker_append(track, rtn);
   return rtn;
@@ -331,8 +390,16 @@ kv_element_equal(kv_element_t * a, kv_element_t * b) {
       if(a->data.i64 == b->data.i64) return KV_EQUAL; else return KV_NOT_EQUAL;
     } break;
 
+    case KV_I64PTR: {
+      if(a->data.i64ptr == b->data.i64ptr) return KV_EQUAL; else return KV_NOT_EQUAL;
+    } break;
+
     case KV_DBL: {
       if(a->data.dbl == b->data.dbl) return KV_EQUAL; else return KV_NOT_EQUAL;
+    } break;
+
+    case KV_DBLPTR: {
+      if(a->data.dblptr == b->data.dblptr) return KV_EQUAL; else return KV_NOT_EQUAL;
     } break;
 
     case KV_PTR: {
@@ -376,6 +443,8 @@ kv_element_hash(kv_element_t * a, uint64_t * hash) {
     case KV_NONE: 
     case KV_DBL:
     case KV_PTR:
+    case KV_I64PTR:
+    case KV_DBLPTR:
     case KV_I64: {
       *hash = (*hash) ^ mix(a->data.i64);
     } break;
@@ -425,8 +494,16 @@ kv_element_print(kv_element_t * a, int64_t indent) {
       print_indent(indent); printf("I64: %ld\n", (long int)a->data.i64);
     } break;
 
+    case KV_I64PTR: {
+      print_indent(indent); printf("I64PTR: %ld\n", kve_get_i64ptr(a));
+    } break;
+
     case KV_DBL: {
       print_indent(indent); printf("DBL: %lf\n", a->data.dbl);
+    } break;
+
+    case KV_DBLPTR: {
+      print_indent(indent); printf("DBLPTR: %lf\n", kve_get_dblptr (a));
     } break;
 
     case KV_PTR: {

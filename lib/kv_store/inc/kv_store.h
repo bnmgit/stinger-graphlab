@@ -53,7 +53,9 @@ enum kv_return {
 enum kv_type {
   KV_NONE = 0,
   KV_I64,
+  KV_I64PTR,
   KV_DBL,
+  KV_DBLPTR,
   KV_STR,
   KV_STR_STATIC,
   KV_KV,
@@ -78,7 +80,9 @@ struct kv_element {
   kv_type_t type;
   union {
     int64_t i64;
+    int64_t * i64ptr;
     double dbl;
+    double * dblptr;
     string_t str;
     void * ptr;
 
@@ -117,7 +121,13 @@ kv_element_t *
 new_kve_from_i64(int64_t i);
 
 kv_element_t *
+new_kve_from_i64ptr(int64_t * i);
+
+kv_element_t *
 new_kve_from_dbl(double i);
+
+kv_element_t *
+new_kve_from_dblptr(double * i);
 
 kv_element_t *
 new_kve_from_ptr(void * i);
@@ -126,7 +136,7 @@ kv_element_t *
 new_kve_from_str(string_t * i);
 
 kv_element_t *
-new_kve_from_str_static(char * s);
+new_kve_from_str_static(const char * s);
 
 kv_element_t
 kve_from_i64(int64_t i);
@@ -141,13 +151,19 @@ kv_element_t
 kve_from_str(string_t * i);
 
 kv_element_t
-kve_from_str_static(char * i);
+kve_from_str_static(const char * i);
 
 int64_t
 kve_get_i64(kv_element_t * e);
 
+int64_t
+kve_get_i64ptr(kv_element_t * e);
+
 double
 kve_get_dbl(kv_element_t * e);
+
+double
+kve_get_dblptr(kv_element_t * e);
 
 void *
 kve_get_ptr(kv_element_t * e);
@@ -205,7 +221,7 @@ kv_element_t *
 kv_tracker_str(kv_element_t * track, string_t * i);
 
 kv_element_t *
-kv_tracker_str_static(kv_element_t * track, char * i);
+kv_tracker_str_static(kv_element_t * track, const char * i);
 
 kv_element_t *
 kv_tracker_vector(kv_element_t * track);

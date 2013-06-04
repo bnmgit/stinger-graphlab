@@ -176,7 +176,7 @@ int64_t stinger_eb_first_ts (const struct stinger_eb *, int);
 
 int64_t stinger_count_outdeg (struct stinger *G, int64_t v);
 
-struct curs etype_begin (stinger_t * S, stinger_vertices_t *vertices, int64_t v, int etype);
+struct curs etype_begin (const stinger_t * S, stinger_vertices_t *vertices, int64_t v, int etype);
 
 void update_edge_data (struct stinger * S, struct stinger_eb *eb,
                   uint64_t index, int64_t neighbor, int64_t weight, int64_t ts);

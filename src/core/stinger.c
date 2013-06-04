@@ -764,7 +764,7 @@ push_ebs (struct stinger *G, size_t neb,
 
 MTA ("mta inline")
 struct curs
-etype_begin (stinger_t * S, stinger_vertices_t *vertices, int64_t v, int etype)
+etype_begin (const stinger_t * S, stinger_vertices_t *vertices, int64_t v, int etype)
 {
   struct curs out;
   assert (vertices);
