@@ -1,7 +1,7 @@
 #ifndef STINGER_NAMES_H_
 #define STINGER_NAMES_H_
 
-#define NAME_STR_MAX 255
+#define NAME_STR_MAX 127
 
 typedef struct stinger_names {
   int64_t next_string;
