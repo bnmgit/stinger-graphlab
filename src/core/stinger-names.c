@@ -133,7 +133,9 @@ stinger_names_create_type(stinger_names_t * sn, char * name, int64_t * out) {
       } else {
 	int64_t place = stinger_int64_fetch_add(&(sn->next_string), length+1);
 	if(place + length >= sn->max_names) {
-	  abort();
+	  /* abort(); */
+	  *out = INT64_MAX;
+	  return -1;
 	}
 	strncpy(names + place, name, length);
 	to_int[index] = stinger_int64_fetch_add(&(sn->next_type), 1);

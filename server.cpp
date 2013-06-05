@@ -30,6 +30,8 @@ extern "C" {
 
 using namespace gt::stinger;
 
+static bool dropped_vertices = false;
+
 struct community_state cstate;
 
 MTA("mta inline")
@@ -110,7 +112,15 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	  const EdgeInsertion & in = batch.insertions(i);
 	  const int64_t u = in.source ();
 	  const int64_t v = in.destination ();
-	  ACCUM_INCR;
+	  if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
+	    ACCUM_INCR;
+	  else {
+	    OMP("omp critical")
+	      if (!dropped_vertices) {
+		V ("Dropped vertices...");
+		dropped_vertices = true;
+	      }
+	  }
 	}
       assert (nincr == batch.insertions_size ());
 
@@ -119,7 +129,15 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	  const EdgeDeletion & del = batch.deletions(d);
 	  const int64_t u = del.source ();
 	  const int64_t v = del.destination ();
-	  ACCUM_REM;
+	  if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
+	    ACCUM_REM;
+	  else {
+	    OMP("omp critical")
+	      if (!dropped_vertices) {
+		V ("Dropped vertices...");
+		dropped_vertices = true;
+	      }
+	  }
 	}
       assert (nrem == batch.deletions_size ());
       break;
@@ -131,7 +149,15 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	  int64_t u, v;
 	  stinger_mapping_create(S, in.source_str().c_str(), in.source_str().length(), &u);
 	  stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &v);
-	  ACCUM_INCR;
+	  if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
+	    ACCUM_INCR;
+	  else {
+	    OMP("omp critical")
+	      if (!dropped_vertices) {
+		V ("Dropped vertices...");
+		dropped_vertices = true;
+	      }
+	  }
 	}
       assert (nincr == batch.insertions_size ());
 
@@ -142,8 +168,17 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	  u = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
 	  v = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
 
-	  if(u != -1 && v != -1)
-	    ACCUM_REM;
+	  if(u != -1 && v != -1) {
+	    if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
+	      ACCUM_REM;
+	    else {
+	      OMP("omp critical")
+		if (!dropped_vertices) {
+		  V ("Dropped vertices...");
+		  dropped_vertices = true;
+		}
+	    }
+	  }
 	}
       assert (nrem == batch.deletions_size ());
       break;
@@ -165,7 +200,15 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	    stinger_mapping_create(S, in.destination_str().c_str(),
 				   in.destination_str().length(), &v);
 
-	  ACCUM_INCR;
+	  if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
+	    ACCUM_INCR;
+	  else {
+	    OMP("omp critical")
+	      if (!dropped_vertices) {
+		V ("Dropped vertices...");
+		dropped_vertices = true;
+	      }
+	  }
 	}
       assert (nincr == batch.insertions_size ());
 
@@ -185,8 +228,17 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	    v = stinger_mapping_lookup(S, del.destination_str().c_str(),
 				       del.destination_str().length());
 
-	  if(u != -1 && v != -1)
-	    ACCUM_REM;
+	  if(u != -1 && v != -1) {
+	    if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
+	      ACCUM_REM;
+	    else {
+	      OMP("omp critical")
+		if (!dropped_vertices) {
+		  V ("Dropped vertices...");
+		  dropped_vertices = true;
+		}
+	    }
+	  }
 	}
       assert (nrem == batch.deletions_size ());
       break;
