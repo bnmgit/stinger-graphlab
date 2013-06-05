@@ -1,6 +1,7 @@
 *~
 client_demo
 server
+lib/protobuf-2.5.0/src/protoc
 
 # Compiled Object files
 *.slo
