@@ -20,9 +20,9 @@
 #endif
 #endif
 /** Edges per edge block */
-#define STINGER_EDGEBLOCKSIZE 16
+#define STINGER_EDGEBLOCKSIZE 14
 /** Number of edge types */
-#define STINGER_NUMETYPES 2
+#define STINGER_NUMETYPES 1
 /** Number of vertex types (with names) */
 #define STINGER_NUMVTYPES 128
 
