@@ -2,7 +2,7 @@
 
 # libtool - Provide generalized library-building support services.
 # Generated automatically by config.status (protobuf) 2.5.0
-# Libtool was configured on host qNaN:
+# Libtool was configured on host pequin:
 # NOTE: Changes made to this file will be lost: look at ltmain.sh.
 #
 #   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2003, 2004, 2005,
@@ -44,7 +44,7 @@ macro_version=2.4.2
 macro_revision=1.3337
 
 # Whether or not to build shared libraries.
-build_libtool_libs=yes
+build_libtool_libs=no
 
 # Whether or not to build static libraries.
 build_old_libs=yes
@@ -53,7 +53,7 @@ build_old_libs=yes
 pic_mode=default
 
 # Whether or not to optimize for fast installation.
-fast_install=yes
+fast_install=needless
 
 # Shell to use when invoking shell scripts.
 SHELL="/bin/bash"
@@ -96,7 +96,7 @@ NM="/usr/bin/nm -B"
 LN_S="ln -s"
 
 # What is the maximum length of a command?
-max_cmd_len=1635000
+max_cmd_len=3458764513820540925
 
 # Object file suffix (normally "o").
 objext=o
@@ -164,7 +164,7 @@ lock_old_archive_extraction=no
 LTCC="gcc -std=gnu9x"
 
 # LTCC compiler flags.
-LTCFLAGS="-fopenmp -g -O2 -Ilib/protobuf-2.5.0/src -Iinc/alg -Iinc/stream -Iinc/util -Isrc/proto -Iinc/core -Iinc -I./ -Ilib/mongoose -Ilib/string/inc -Ilib/fmemopen/inc -Ilib/int-ht-seq/inc -Ilib/int-hm-seq/inc -Ilib/rapidjson/include -Ilib/kv_store/inc"
+LTCFLAGS="-fopenmp -g -O2 -DUSE32BIT -Ilib/protobuf-2.5.0/src -Iinc/alg -Iinc/stream -Iinc/util -Isrc/proto -Iinc/core -Iinc -I./ -Ilib/mongoose -Ilib/string/inc -Ilib/fmemopen/inc -Ilib/int-ht-seq/inc -Ilib/int-hm-seq/inc -Ilib/rapidjson/include -Ilib/kv_store/inc"
 
 # Take the output of nm and produce a listing of raw symbols and C names.
 global_symbol_pipe="sed -n -e 's/^.*[	 ]\\([ABCDGIRSTW][ABCDGIRSTW]*\\)[	 ][	 ]*\\([_A-Za-z][_A-Za-z0-9]*\\)\$/\\1 \\2 \\2/p' | sed '/ __gnu_lto/d'"
@@ -275,7 +275,7 @@ hardcode_into_libs=yes
 sys_lib_search_path_spec="/usr/lib/gcc/x86_64-linux-gnu/4.7 /usr/lib/x86_64-linux-gnu /usr/lib /lib/x86_64-linux-gnu /lib "
 
 # Run-time system search path for libraries.
-sys_lib_dlsearch_path_spec="/lib /usr/lib /usr/lib/x86_64-linux-gnu/fakechroot /usr/local/lib /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu /lib32 /usr/lib32 /libx32 /usr/libx32 "
+sys_lib_dlsearch_path_spec="/lib /usr/lib /usr/local/lib /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu "
 
 # Whether dlopen is supported.
 dlopen_support=unknown
@@ -323,7 +323,7 @@ link_static_flag="-static"
 compiler_c_o="yes"
 
 # Whether or not to add -lc for building shared libraries.
-build_libtool_need_lc=no
+build_libtool_need_lc=yes
 
 # Whether or not to disallow shared libs when runtime libs are static.
 allow_libtool_libs_with_static_runtimes=no
@@ -513,7 +513,7 @@ compiler_lib_search_path=""
 #         compiler:		$LTCC
 #         compiler flags:		$LTCFLAGS
 #         linker:		$LD (gnu? $with_gnu_ld)
-#         $progname:	(GNU libtool) 2.4.2 Debian-2.4.2-1ubuntu1
+#         $progname:	(GNU libtool) 2.4.2 Debian-2.4.2-1.1
 #         automake:	$automake_version
 #         autoconf:	$autoconf_version
 #
@@ -523,7 +523,7 @@ compiler_lib_search_path=""
 
 PROGRAM=libtool
 PACKAGE=libtool
-VERSION="2.4.2 Debian-2.4.2-1ubuntu1"
+VERSION="2.4.2 Debian-2.4.2-1.1"
 TIMESTAMP=""
 package_revision=1.3337
 
