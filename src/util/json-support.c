@@ -196,7 +196,8 @@ group_to_json(stinger_t * S, int64_t * group, int64_t groupsize) {
 /* produces the subgraph starting at vtx and including all neighboring
  * vertices with the same label */
 string_t *
-labeled_subgraph_to_json(stinger_t * S, int64_t src, int64_t * labels) {
+labeled_subgraph_to_json(stinger_t * S, int64_t src, int64_t * labels, const int64_t vtxlimit_in) {
+  const int64_t vtxlimit = (vtxlimit_in < 1 || vtxlimit_in > STINGER_MAX_LVERTICES? STINGER_MAX_LVERTICES : vtxlimit_in);
   string_t vertices, edges;
   string_init_from_cstr(&vertices, "\"vertices\" : [ \n");
   string_init_from_cstr(&edges, "\"edges\" : [ \n");
@@ -210,7 +211,7 @@ labeled_subgraph_to_json(stinger_t * S, int64_t src, int64_t * labels) {
   int64_t which = 0;
 
   uint8_t * found = xcalloc(sizeof(uint8_t), STINGER_MAX_LVERTICES);
-  int64_t * queue = xmalloc(sizeof(int64_t) * STINGER_MAX_LVERTICES);;
+  int64_t * queue = xmalloc(sizeof(int64_t) * (vtxlimit < 1? 1 : vtxlimit));
 
   queue[0] = src;
   found[src] = 1;
@@ -257,7 +258,7 @@ labeled_subgraph_to_json(stinger_t * S, int64_t src, int64_t * labels) {
 	  }
 	}
 	string_append_cstr(&edges, edge_str);
-      } else if(!found[STINGER_EDGE_DEST] && labels[STINGER_EDGE_SOURCE] == labels[STINGER_EDGE_DEST]) {
+      } else if(q_top < vtxlimit && !found[STINGER_EDGE_DEST] && labels[STINGER_EDGE_SOURCE] == labels[STINGER_EDGE_DEST]) {
 	found[STINGER_EDGE_DEST] = 1;
 	queue[q_top++] = STINGER_EDGE_DEST;
       }

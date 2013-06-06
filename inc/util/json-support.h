@@ -25,6 +25,6 @@ string_t *
 group_to_json(stinger_t * S, int64_t * group, int64_t groupsize);
 
 string_t *
-labeled_subgraph_to_json(stinger_t * S, int64_t src, int64_t * labels);
+labeled_subgraph_to_json(stinger_t * S, int64_t src, int64_t * labels, const int64_t vtxlimit);
 
 #endif  /*JSON_SUPPORT_H*/

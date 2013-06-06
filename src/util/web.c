@@ -5,10 +5,14 @@
 #include "csv.h"
 #include "kv_store.h"
 
+#include <inttypes.h>
+#include <errno.h>
+
 static stinger_t * S = NULL;
 static kv_element_t labels;
 static kv_element_t scores;
 static kv_element_t tracker;
+static int64_t vtxlimit = 0;
 
 void
 web_start_stinger(stinger_t * stinger, const char * port) {
@@ -320,6 +324,31 @@ begin_request_handler(struct mg_connection *conn)
   int content_size = 1048576;
   int content_length = 0;
 
+  if(0 == strncmp(request_info->uri, "/vtxlimit", 9)) {
+    const char * suburi = request_info->uri + 9;
+    int64_t old_vtxlimit = vtxlimit;
+    char limitbuf[64];
+
+    if(suburi[0] == '/') {
+      int64_t new_vtxlimit;
+      /* setting the vertex limit. */
+      suburi++;
+      errno = 0;
+      new_vtxlimit = strtol (suburi, NULL, 10);
+      if (!errno && new_vtxlimit >= 0) vtxlimit = new_vtxlimit;
+    }
+
+    sprintf (limitbuf, "%" PRId64, old_vtxlimit);
+    mg_printf(conn,
+	"HTTP/1.1 200 OK\r\n"
+	"Content-Type: text/plain\r\n"
+	"Content-Length: %d\r\n"        // Always set Content-Length
+	"\r\n"
+	"%s",
+        strlen (limitbuf), limitbuf);
+    return 1;
+  }
+
   if(0 == strncmp(request_info->uri, "/getphysid", 10)) {
     const char * suburi = request_info->uri + 10;
     if(suburi[0] == '/') suburi++;
@@ -463,7 +492,7 @@ begin_request_handler(struct mg_connection *conn)
 	}
 
 	if(vtx < STINGER_MAX_LVERTICES && vtx >= 0) {
-	    string_t * rslt = labeled_subgraph_to_json(S, vtx, kve_get_ptr(val));
+	    string_t * rslt = labeled_subgraph_to_json(S, vtx, kve_get_ptr(val), vtxlimit);
 	    mg_printf(conn,
 		"HTTP/1.1 200 OK\r\n"
 		"Content-Type: text/plain\r\n"
