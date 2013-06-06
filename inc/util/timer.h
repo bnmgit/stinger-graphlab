@@ -3,6 +3,7 @@
 
 void init_timer (void);
 double timer_getres (void);
+double timer (void);
 double tic (void);
 double toc (void);
 void stats_tic (char *);

@@ -345,7 +345,7 @@ main(int argc, char *argv[])
 	double processing_time_start;
 	//batch.PrintDebugString();
 
-	processing_time_start = tic ();
+	processing_time_start = timer ();
 
 	process_batch(S, batch, &cstate);
 
@@ -353,7 +353,7 @@ main(int argc, char *argv[])
 
 	cstate_update (&cstate, S);
 
-	processing_time = tic () - processing_time_start;
+	processing_time = timer () - processing_time_start;
 
 	V_A("Number of non-singleton communities %ld/%ld, max size %ld, modularity %g",
 	    (long)cstate.n_nonsingletons, (long)cstate.cg.nv,
