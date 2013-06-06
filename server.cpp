@@ -33,6 +33,9 @@ using namespace gt::stinger;
 static bool dropped_vertices = false;
 
 struct community_state cstate;
+int64_t n_components, n_nonsingleton_components, max_compsize;
+static int64_t * comp_vlist;
+static int64_t * comp_mark;
 
 MTA("mta inline")
 MTA("mta expect parallel")
@@ -317,6 +320,10 @@ main(int argc, char *argv[])
   }
 
   int64_t * components = (int64_t *)xmalloc(sizeof(int64_t) * STINGER_MAX_LVERTICES);
+  comp_vlist = (int64_t *)xmalloc(sizeof(int64_t) * STINGER_MAX_LVERTICES);
+  comp_mark = (int64_t *)xmalloc(sizeof(int64_t) * STINGER_MAX_LVERTICES);
+  OMP("omp parallel for")
+    for (int64_t k = 0; k < STINGER_MAX_LVERTICES; ++k) comp_mark[k] = -1;
   double * centralities = (double *)xmalloc(sizeof(double) * STINGER_MAX_LVERTICES);
   double processing_time;
 
@@ -342,6 +349,14 @@ main(int argc, char *argv[])
 
 	V_A("Received message of size %ld", (long)batch.ByteSize());
 
+	if (0 == batch.insertions_size () && 0 == batch.deletions_size ()) {
+	  V("Empty batch.");
+	  if (!batch.keep_alive ())
+	    break;
+	  else
+	    continue;
+	}
+
 	double processing_time_start;
 	//batch.PrintDebugString();
 
@@ -354,6 +369,10 @@ main(int argc, char *argv[])
 	cstate_update (&cstate, S);
 
 	processing_time = timer () - processing_time_start;
+
+	V_A("Number of non-singleton components %ld/%ld, max size %ld",
+	    (long)n_nonsingleton_components, (long)n_components,
+	    (long)max_compsize);
 
 	V_A("Number of non-singleton communities %ld/%ld, max size %ld, modularity %g",
 	    (long)cstate.n_nonsingletons, (long)cstate.cg.nv,
@@ -382,11 +401,13 @@ components_init(struct stinger * S, int64_t nv, int64_t * component_map) {
       component_map[i] = i;
     }
   
-  components_batch(S, nv, component_map);
+  /* S is empty... components_batch(S, nv, component_map); */
+  n_components = nv;
 }
 
 void
 components_batch(struct stinger * S, int64_t nv, int64_t * component_map) {
+  int64_t nc;
   /* Iterate until no changes occur */
   while (1) {
     int changed = 0;
@@ -408,12 +429,71 @@ components_batch(struct stinger * S, int64_t nv, int64_t * component_map) {
     if (!changed)
       break;
 
+    nc = 0;
     /* Tree climbing with OpenMP parallel for */
-    OMP ("omp parallel for")
+    OMP ("omp parallel for reduction(+: nc)")
       MTA ("mta assert nodep")
       for (uint64_t i = 0; i < nv; i++) {
         while (component_map[i] != component_map[component_map[i]])
           component_map[i] = component_map[component_map[i]];
+	if (i == component_map[i]) ++nc;
       }
   }
+  n_components = nc;
+
+  n_nonsingleton_components = 0;
+  max_compsize = 0;
+  if (nc) {
+    int64_t nvlist = 0;
+    int64_t * restrict vlist = comp_vlist;
+    int64_t * restrict mark = comp_mark;
+    OMP("omp parallel") {
+      OMP("omp for")
+	for (int64_t k = 0; k < nv; ++k) {
+	  const int64_t c = component_map[k];
+	  assert (c < n_components);
+	  assert (c >= 0);
+	  int64_t subcnt = int64_fetch_add (&mark[c], 1);
+	  if (-1 == subcnt) { /* First to claim. */
+	    int64_t where = int64_fetch_add (&nvlist, 1);
+	    assert (where < n_components);
+	    assert (where >= 0);
+	    vlist[where] = c;
+	  }
+	}
+
+      int64_t cmaxsz = -1;
+      OMP("omp for reduction(+: n_nonsingleton_components)")
+	for (int64_t k = 0; k < nvlist; ++k) {
+	  const int64_t c = vlist[k];
+	  assert (c < n_components);
+	  assert (c >= 0);
+	  const int64_t csz = mark[c]+1;
+	  if (csz > 1) ++n_nonsingleton_components;
+	  if (csz > cmaxsz) cmaxsz = csz;
+	  mark[c] = -1; /* Reset to -1. */
+	}
+      OMP("omp critical")
+	if (cmaxsz > max_compsize) max_compsize = cmaxsz;
+
+#if !defined(NDEBUG)
+      OMP("omp for") for (int64_t k = 0; k < n_components; ++k) assert (mark[k] == -1);
+#endif
+    }
+  }
+}
+
+extern "C" {
+void
+grotty_nasty_stats_hack (char *ugh)
+{
+  snprintf (ugh, 2048, "{ \"n_nonsingleton_components\" : %ld, "
+	   "\"max_compsize\" : %ld, "
+	   "\"n_nonsingleton_communities\" : %ld, "
+	   "\"max_commsize\" : %ld, "
+	   "\"modularity\" : %g }",
+	    (long)n_nonsingleton_components, (long)max_compsize,
+	    (long)cstate.n_nonsingletons, (long)cstate.max_csize,
+	    cstate.modularity);
+}
 }

@@ -8,6 +8,12 @@
 #include <inttypes.h>
 #include <errno.h>
 
+/* XXX: Yuck, gross, don't do this. */
+#include "../../src-demo/defs.h"
+#include "../../src-demo/graph-el.h"
+#include "../../src-demo/community.h"
+#include "../../src-demo/community-update.h"
+
 static stinger_t * S = NULL;
 static kv_element_t labels;
 static kv_element_t scores;
@@ -323,6 +329,21 @@ begin_request_handler(struct mg_connection *conn)
   char * content = calloc(1048576, sizeof(char));
   int content_size = 1048576;
   int content_length = 0;
+
+  /* XXX: Replace this with a kv-dumper someday */
+  if(0 == strncmp(request_info->uri, "/uglystatshack", 14)) {
+    char ugh[2049];
+    extern void grotty_nasty_stats_hack (char *);
+    grotty_nasty_stats_hack (ugh);
+    mg_printf(conn,
+	      "HTTP/1.1 200 OK\r\n"
+	      "Content-Type: text/plain\r\n"
+	      "Content-Length: %d\r\n"        // Always set Content-Length
+	      "\r\n"
+	      "%s",
+	      strlen (ugh), ugh);
+    return 1;
+  }
 
   if(0 == strncmp(request_info->uri, "/vtxlimit", 9)) {
     const char * suburi = request_info->uri + 9;

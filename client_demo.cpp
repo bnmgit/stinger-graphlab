@@ -430,3 +430,11 @@ main(int argc, char *argv[])
   free(buffer);
   return 0;
 }
+
+extern "C" {
+void
+grotty_nasty_stats_hack (char *ugh)
+{
+  *ugh = 0;
+}
+}
