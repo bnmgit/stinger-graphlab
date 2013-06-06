@@ -776,9 +776,9 @@ sliced_non_maximal_pass (const struct el g,
   CDECL(g);
   intvtx_t new_nunmatched = 0;
 
-  noOMP("omp parallel") {
+  OMP("omp parallel") {
     /* Assume that m[i] < 0 when unmatched, == k when edge k is the best match. */
-    noOMP("omp for schedule(guided)") MTA_NODEP MTA_STREAMS
+    OMP("omp for schedule(guided)") MTA_NODEP MTA_STREAMS
       for (intvtx_t ki = 0; ki < nunmatched; ++ki) {
         const intvtx_t i = unmatched[ki];
         const int64_t kend = rowend[i];
@@ -803,7 +803,7 @@ sliced_non_maximal_pass (const struct el g,
       }
 
 #if !defined(NDEBUG)
-    noOMP("omp for schedule(static)") MTA("mta assert parallel") MTA_STREAMS
+    OMP("omp for schedule(static)") MTA("mta assert parallel") MTA_STREAMS
       for (intvtx_t ki = 0; ki < nunmatched; ++ki) {
         const intvtx_t i = unmatched[ki];
         const int64_t best_match = bestm[ki];
@@ -816,7 +816,7 @@ sliced_non_maximal_pass (const struct el g,
       }
 #endif
 
-    noOMP("omp for schedule(guided)") MTA_NODEP MTA_STREAMS
+    OMP("omp for schedule(guided)") MTA_NODEP MTA_STREAMS
       for (intvtx_t ki = 0; ki < nunmatched; ++ki) {
         intvtx_t i = unmatched[ki];
         const int64_t ke = bestm[ki];
@@ -911,7 +911,7 @@ sliced_non_maximal_pass (const struct el g,
             }
             if (win_j) {
               if (mi == m[i] && mj == m[j]) {
-#if 0&&defined(_OPENMP)
+#if defined(_OPENMP)
                 omp_set_lock (&lockspace[i]);
                 omp_set_lock (&lockspace[j]);
 #endif
@@ -919,7 +919,7 @@ sliced_non_maximal_pass (const struct el g,
                   m[i] = m[j] = ke;
                   done = 1;
                 }
-#if 0&&defined(_OPENMP)
+#if defined(_OPENMP)
                 omp_unset_lock (&lockspace[j]);
                 omp_unset_lock (&lockspace[i]);
 #endif
@@ -931,7 +931,7 @@ sliced_non_maximal_pass (const struct el g,
         }
       }
 
-    noOMP("omp for schedule(static)") MTA_NODEP MTA_STREAMS
+    OMP("omp for schedule(static)") MTA_NODEP MTA_STREAMS
       for (intvtx_t ki = 0; ki < nunmatched; ++ki) {
         //const int64_t i = unmatched[ki];
         const int64_t ke = bestm[ki];
@@ -946,7 +946,7 @@ sliced_non_maximal_pass (const struct el g,
         }
       }
 
-    noOMP("omp for schedule(static)") MTA_NODEP MTA_STREAMS
+    OMP("omp for schedule(static)") MTA_NODEP MTA_STREAMS
       for (intvtx_t ki = 0; ki < nunmatched; ++ki) {
         const intvtx_t i = unmatched[ki];
         if (bestm[ki] >= 0 && m[i] < 0) {
@@ -957,15 +957,15 @@ sliced_non_maximal_pass (const struct el g,
         }
       }
 
-    noOMP("omp for schedule(static)") MTA_STREAMS
+    OMP("omp for schedule(static)") MTA_STREAMS
       for (intvtx_t ki = 0; ki < new_nunmatched; ++ki)
         unmatched[ki] = tmp[ki];
 
 #if !defined(NDEBUG)
-    noOMP("omp for schedule(static)") MTA_NODEP MTA_STREAMS
+    OMP("omp for schedule(static)") MTA_NODEP MTA_STREAMS
       for (intvtx_t ki = 0; ki < new_nunmatched; ++ki)
         assert (m[unmatched[ki]] < 0);
-    noOMP("omp for schedule(static)") MTA_NODEP MTA_STREAMS
+    OMP("omp for schedule(static)") MTA_NODEP MTA_STREAMS
       for (intvtx_t i = 0; i < g.nv; ++i) {
         if (m[i] >= 0) {
           if (m[i] != m[J(g, m[i])] || m[i] != m[I(g, m[i])]) {
