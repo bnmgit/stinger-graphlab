@@ -23,12 +23,36 @@ extern "C" {
 #endif
 
 #include <cstdio>
+#include <algorithm>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 
 using namespace gt::stinger;
+
+static inline char
+ascii_tolower (char x)
+{
+  if (x <= 'Z' && x >= 'A')
+    return x - ('Z'-'z');
+  return x;
+}
+
+template <class T>
+void
+src_string (const T& in, std::string& out)
+{
+  out = in.source_str();
+  std::transform(out.begin(), out.end(), out.begin(), ascii_tolower);
+}
+template <class T>
+void
+dest_string (const T& in, std::string& out)
+{
+  out = in.destination_str();
+  std::transform(out.begin(), out.end(), out.begin(), ascii_tolower);
+}
 
 static bool dropped_vertices = false;
 
@@ -107,7 +131,8 @@ process_batch(stinger_t * S, StingerBatch & batch,
   incr = (int64_t*)xmalloc ((3 * batch.insertions_size () + 2 * batch.deletions_size ()) * sizeof (*incr));
   rem = &incr[3 * batch.insertions_size ()];
 
-  OMP("omp parallel")
+  OMP("omp parallel") {
+    std::string src, dest; /* Thread-local buffers */
     switch (batch.type ()) {
     case NUMBERS_ONLY:
       OMP("omp for")
@@ -150,8 +175,10 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	for (size_t i = 0; i < batch.insertions_size(); i++) {
 	  const EdgeInsertion & in = batch.insertions(i);
 	  int64_t u, v;
-	  stinger_mapping_create(S, in.source_str().c_str(), in.source_str().length(), &u);
-	  stinger_mapping_create(S, in.destination_str().c_str(), in.destination_str().length(), &v);
+	  src_string (in, src);
+	  dest_string (in, dest);
+	  stinger_mapping_create(S, src.c_str(), src.length(), &u);
+	  stinger_mapping_create(S, dest.c_str(), dest.length(), &v);
 	  if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
 	    ACCUM_INCR;
 	  else {
@@ -168,8 +195,10 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	for(size_t d = 0; d < batch.deletions_size(); d++) {
 	  const EdgeDeletion & del = batch.deletions(d);
 	  int64_t u, v;
-	  u = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
-	  v = stinger_mapping_lookup(S, del.destination_str().c_str(), del.destination_str().length());
+	  src_string (del, src);
+	  dest_string (del, dest);
+	  u = stinger_mapping_lookup(S, src.c_str(), src.length());
+	  v = stinger_mapping_lookup(S, dest.c_str(), dest.length());
 
 	  if(u != -1 && v != -1) {
 	    if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
@@ -193,15 +222,17 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	  int64_t u, v;
 	  if (in.has_source())
 	    u = in.source();
-	  else
-	    stinger_mapping_create (S, in.source_str().c_str(),
-				    in.source_str().length(), &u);
+	  else {
+	    src_string (in, src);
+	    stinger_mapping_create (S, src.c_str(), src.length(), &u);
+	  }
 
 	  if (in.has_destination())
 	    v = in.destination();
-	  else
-	    stinger_mapping_create(S, in.destination_str().c_str(),
-				   in.destination_str().length(), &v);
+	  else {
+	    dest_string (in, src);
+	    stinger_mapping_create(S, dest.c_str(), dest.length(), &v);
+	  }
 
 	  if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
 	    ACCUM_INCR;
@@ -222,14 +253,17 @@ process_batch(stinger_t * S, StingerBatch & batch,
 
 	  if (del.has_source())
 	    u = del.source();
-	  else
-	    u = stinger_mapping_lookup(S, del.source_str().c_str(), del.source_str().length());
+	  else {
+	    src_string (del, src);
+	    u = stinger_mapping_lookup(S, src.c_str(), src.length());
+	  }
 
 	  if (del.has_destination())
 	    v = del.destination();
-	  else
-	    v = stinger_mapping_lookup(S, del.destination_str().c_str(),
-				       del.destination_str().length());
+	  else {
+	    dest_string (del, dest);
+	    v = stinger_mapping_lookup(S, dest.c_str(), dest.length());
+	  }
 
 	  if(u != -1 && v != -1) {
 	    if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
@@ -249,6 +283,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
     default:
       abort ();
     }
+  }
 
   cstate_preproc (cstate, S, nincr, incr, nrem, rem);
 

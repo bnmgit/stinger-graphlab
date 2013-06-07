@@ -267,7 +267,7 @@
 	});
 
       function search() {
-	d3.json("/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val(),
+	d3.json("/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val().toLowerCase(),
 	  function(error, graph) {
 	    if(!error) {
 	      graphjson = graph;
@@ -323,7 +323,7 @@
       }
 
       function updateGraph() {
-	d3.json("/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val(),
+	d3.json("/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val().toLowerCase(),
 	  function(error, graph) {
 	    if(!error) {
 	      graph.vertices.forEach(function(d, i) {
@@ -673,7 +673,7 @@
         ntr = d3.select("#neighborsbody").selectAll("tr")
           .data(nodedata)
           .enter().append("tr")
-          .sort(function (a, b) { return a == null || b == null ? 0 : (attrName == "physID" ? stringCompare(a[attrName].id, b[attrName].id) : stringCompare(a[attrName], b[attrName])); });
+          .sort(function (a, b) { return a == null || b == null ? 0 : (attrName == "physID" ? stringCompare(a[attrName].id.toLowerCase(), b[attrName].id.toLowerCase()) : stringCompare(a[attrName], b[attrName])); });
 
         // Cells
         ntd = ntr.selectAll("td")
@@ -704,7 +704,7 @@
         etr = d3.select("#edgesbody").selectAll("tr")
           .data(linkdata)
           .enter().append("tr")
-          .sort(function (a, b) { return a == null || b == null ? 0 : (attrName == "physID" ? stringCompare(a[attrName].id, b[attrName].id) : stringCompare(a[attrName], b[attrName])); });
+          .sort(function (a, b) { return a == null || b == null ? 0 : (attrName == "physID" ? stringCompare(a[attrName].id.toLowerCase(), b[attrName].id.toLowerCase()) : stringCompare(a[attrName], b[attrName])); });
 
         // Cells
         etd = etr.selectAll("td")
