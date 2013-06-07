@@ -443,6 +443,7 @@ components_batch(struct stinger * S, int64_t nv, int64_t * component_map) {
 
   n_nonsingleton_components = 0;
   max_compsize = 0;
+  int64_t nnsc = 0, mxcsz = 0;
   if (nc) {
     int64_t nvlist = 0;
     int64_t * restrict vlist = comp_vlist;
@@ -463,23 +464,29 @@ components_batch(struct stinger * S, int64_t nv, int64_t * component_map) {
 	}
 
       int64_t cmaxsz = -1;
-      OMP("omp for reduction(+: n_nonsingleton_components)")
+      OMP("omp for reduction(+: nnsc)")
 	for (int64_t k = 0; k < nvlist; ++k) {
 	  const int64_t c = vlist[k];
 	  assert (c < n_components);
 	  assert (c >= 0);
 	  const int64_t csz = mark[c]+1;
-	  if (csz > 1) ++n_nonsingleton_components;
+	  if (csz > 1) ++nnsc;
 	  if (csz > cmaxsz) cmaxsz = csz;
 	  mark[c] = -1; /* Reset to -1. */
 	}
       OMP("omp critical")
-	if (cmaxsz > max_compsize) max_compsize = cmaxsz;
+	if (cmaxsz > mxcsz) mxcsz = cmaxsz;
 
 #if !defined(NDEBUG)
       OMP("omp for") for (int64_t k = 0; k < n_components; ++k) assert (mark[k] == -1);
 #endif
     }
+    /* XXX: not right, but cannot find where these are appearing as
+       zero in the stats display... */
+    if (nnsc)
+      n_nonsingleton_components = nnsc;
+    if (mxcsz)
+      max_compsize = mxcsz;
   }
 }
 

@@ -8,13 +8,29 @@
     <script src="lib/canvas/canvasjs.min.js" type="text/javascript"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="lib/bootstrap/css/bootstrap_stinger.css" rel="stylesheet" media="screen">
+    <style type="text/css">
+      .dl-horizontal dt {
+        white-space: normal;
+	width: 20%;
+        padding-right: 1em;
+      }
+    </style>
   </head>
   <body>
     <div class="container">
       <div class="row">
 	<h2 class="">Stats</h2>
-      <div id="chartcontainer" style="height:360px"></div>
-      </div>
+	<div id="statscontainer">
+	  <dl class="dl-horizontal">
+	    <dt># non-trivial components</dt><dd id="n_nonsingleton_components"></dd>
+	    <dt>Largest component size</dt><dd id="max_compsize"></dd>
+	    <dt># non-trivial communities</dt><dd id="n_nonsingleton_communities"></dd>
+	    <dt>Largest community size</dt><dd id="max_commsize"></dd>
+	    <dt>Modularity</dt><dd id="modularity"></dd>
+	  </dl>
+	</div>
+      <!-- <div id="chartcontainer" style="height:360px"></div>
+      </div> -->
       <div class="row">
 	<h2 class="">Search</h2>
 	<div class="span12">
@@ -204,6 +220,7 @@
       var svglinks, svgnodes;
 
       var curTimeout = null;
+      var statsTimeout = null;
 
       /* mappings from stingerland to d3lang */
       var nodemap = {}, linkmap = {};
@@ -275,6 +292,7 @@
 		window.clearTimeout(curTimeout);
 	      }
 	      curTimeout = window.setTimeout(updateGraph, 3000);
+	      /*
 	      if($("#select_labels").val() != chartsrc) {
 		resetCharts();
 		if(chartTimeout) {
@@ -282,10 +300,26 @@
 		}
 		chartTimeout = window.setTimeout(updateChart, 3000);
 	      }
-	    } else {
+              */
+	    } /* else {
 	      chartTimeout = window.setTimeout(updateChart, 3000);
-	    }
+	    } */
 	  });
+      }
+
+      function update_ugly_stats() {
+	d3.json("/uglystatshack",
+	        function(error, stats) {
+		  if (!error) {
+		    $.each(stats, function (key, val) {
+		                     $("#" + key).html(val);
+		                  });
+		  }
+		});
+        statsTimeout = window.setTimeout(update_ugly_stats, 3000);
+      }
+      if (!statsTimeout) {
+        statsTimeout = window.setTimeout(update_ugly_stats, 3000);
       }
 
       function updateGraph() {
