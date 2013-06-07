@@ -469,16 +469,18 @@ components_batch(struct stinger * S, int64_t nv, int64_t * component_map) {
     if (!changed)
       break;
 
-    nc = 0;
     /* Tree climbing with OpenMP parallel for */
-    OMP ("omp parallel for reduction(+: nc)")
+    OMP ("omp parallel for")
       MTA ("mta assert nodep")
       for (uint64_t i = 0; i < nv; i++) {
-        while (component_map[i] != component_map[component_map[i]])
+	while (component_map[i] != component_map[component_map[i]])
           component_map[i] = component_map[component_map[i]];
-	if (i == component_map[i]) ++nc;
       }
   }
+  nc = 0;
+  OMP ("omp parallel for reduction(+: nc)")
+    for (uint64_t i = 0; i < nv; i++)
+      if (component_map[i] == component_map[component_map[i]]) ++nc;
   n_components = nc;
 
   n_nonsingleton_components = 0;
