@@ -375,12 +375,14 @@ main(int argc, char *argv[])
 
   while(1) {
     int accept_handle = accept(sock_handle, NULL, NULL);
+    int nfail = 0;
 
     V("Ready to accept messages.");
     while(1) {
 
       StingerBatch batch;
       if(recv_message(accept_handle, batch)) {
+	nfail = 0;
 
 	V_A("Received message of size %ld", (long)batch.ByteSize());
 
@@ -420,9 +422,12 @@ main(int argc, char *argv[])
 	  break;
 
       } else {
+	++nfail;
 	V("ERROR Parsing failed.\n");
+	if (nfail > 2) break;
       }
     }
+    if (nfail > 2) break;
   }
 
   return 0;
