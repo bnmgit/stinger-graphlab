@@ -406,7 +406,10 @@ begin_request_handler(struct mg_connection *conn)
       char * len = strchr(suburi, '/');
       int all = 0;
       if(len && len == (suburi + strlen(suburi - 1))) {
-	strncpy(tmp, suburi, len - suburi);
+	size_t sz = len - suburi;
+	if (sz > 1023) sz = 1023;
+	strncpy(tmp, suburi, sz);
+	tmp[sz] = 0;
 	suburi = tmp;
       }
       if(!len || all) {
@@ -433,7 +436,10 @@ begin_request_handler(struct mg_connection *conn)
       char * len = strchr(suburi, '/');
       int all = 0;
       if(len && len == (suburi + strlen(suburi - 1))) {
-	strncpy(tmp, suburi, len - suburi);
+	size_t sz = len - suburi;
+	if (sz > 1023) sz = 1023;
+	strncpy(tmp, suburi, sz);
+	tmp[sz] = 0;
 	suburi = tmp;
       }
       if(!len || all) {
@@ -471,7 +477,10 @@ begin_request_handler(struct mg_connection *conn)
       char * len = strchr(suburi, '/');
       int all = 0;
       if(len && len == (suburi + strlen(suburi - 1))) {
-	strncpy(tmp, suburi, len - suburi);
+	size_t sz = len - suburi;
+	if (sz > 1023) sz = 1023;
+	strncpy(tmp, suburi, sz);
+	tmp[sz] = 0;
 	suburi = tmp;
       }
       if(!len || all) {
@@ -497,7 +506,10 @@ begin_request_handler(struct mg_connection *conn)
     char * len = strchr(suburi, '/');
     int all = 0;
     if(len) {
-      strncpy(tmp, suburi, len - suburi);
+      size_t sz = len - suburi;
+      if (sz > 1023) sz = 1023;
+      strncpy(tmp, suburi, sz);
+      tmp[sz] = 0;
       suburi = len+1;
 
       kv_element_t key = kve_from_str_static(tmp);
