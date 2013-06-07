@@ -40,6 +40,12 @@
 	    <input id="twitter_handle" type="text" class="input-medium" placeholder="Twitter Handle">
 	    <button type="submit" class="btn">Search</button>
 	  </form>
+	  <form class="form-inline " action="javascript:setvtxlimit();">
+	    Vertex limit:
+	    <input id="vtxlimit" type="text" class="input-medium"
+		   placeholder="Vertex limit">
+	    <button type="submit" class="btn">Set</button>
+	  </form>
 	</div>
 	<div class="span12">
 	  <div class="well">
@@ -265,6 +271,16 @@
 	    .append("option")
 	    .text(function(d) {return d});
 	});
+
+      function setvtxlimit() {
+        var lmt = parseInt ($("#vtxlimit").val());
+	if (lmt >= 0) {
+	  $.get("/vtxlimit/" + lmt);
+        }
+      }
+
+      $("#vtxlimit").val("1000");
+      setvtxlimit();
 
       function search() {
 	d3.json("/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val().toLowerCase(),
