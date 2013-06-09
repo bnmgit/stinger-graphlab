@@ -150,7 +150,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	      }
 	  }
 	}
-      assert (nincr == batch.insertions_size ());
+      assert (dropped_vertices || nincr == batch.insertions_size ());
 
       OMP("omp for")
 	for(size_t d = 0; d < batch.deletions_size(); d++) {
@@ -167,7 +167,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	      }
 	  }
 	}
-      assert (nrem == batch.deletions_size ());
+      assert (dropped_vertices || nrem == batch.deletions_size ());
       break;
 
     case STRINGS_ONLY:
@@ -189,7 +189,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	      }
 	  }
 	}
-      assert (nincr == batch.insertions_size ());
+      assert (dropped_vertices || nincr == batch.insertions_size ());
 
       OMP("omp for")
 	for(size_t d = 0; d < batch.deletions_size(); d++) {
@@ -212,7 +212,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	    }
 	  }
 	}
-      assert (nrem == batch.deletions_size ());
+      assert (dropped_vertices || nrem == batch.deletions_size ());
       break;
 
     case MIXED:
@@ -244,7 +244,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	      }
 	  }
 	}
-      assert (nincr == batch.insertions_size ());
+      assert (dropped_vertices || nincr == batch.insertions_size ());
 
       OMP("omp for")
 	for(size_t d = 0; d < batch.deletions_size(); d++) {
@@ -277,7 +277,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	    }
 	  }
 	}
-      assert (nrem == batch.deletions_size ());
+      assert (dropped_vertices || nrem == batch.deletions_size ());
       break;
 
     default:
