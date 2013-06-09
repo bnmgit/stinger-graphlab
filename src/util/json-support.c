@@ -10,10 +10,13 @@ egonet_to_json(stinger_t * S, int64_t vtx) {
   string_init_from_cstr(&vertices, "\"vertices\" : [ \n");
   string_init_from_cstr(&edges, "\"edges\" : [ \n");
 
-  char vtx_str[1UL<<20UL];
-  FILE * vtx_file = fmemopen(vtx_str, sizeof(vtx_str), "w");
-  char edge_str[1UL<<20UL];
+  char *vtx_str, *edge_str;
+  FILE * vtx_file;
   int edge_added = 0;
+
+  vtx_str = xmalloc (2UL<<20UL);
+  edge_str = &vtx_str[1UL<<20UL];
+  vtx_file = fmemopen(vtx_str, sizeof(vtx_str), "w");
 
   stinger_vertex_to_json_with_type_strings(stinger_vertices_get(S), stinger_vtype_names_get(S), stinger_physmap_get(S), vtx, vtx_file, 2);
   fflush(vtx_file);
@@ -90,6 +93,7 @@ egonet_to_json(stinger_t * S, int64_t vtx) {
   fclose(vtx_file);
   string_free_internal(&vertices);
   string_free_internal(&edges);
+  free (vtx_str);
   return egonet;
 }
 
@@ -101,14 +105,17 @@ group_to_json(stinger_t * S, int64_t * group, int64_t groupsize) {
   string_init_from_cstr(&vertices, "\"vertices\" : [ \n");
   string_init_from_cstr(&edges, "\"edges\" : [ \n");
 
-  char vtx_str[1UL<<20UL];
-  FILE * vtx_file = fmemopen(vtx_str, sizeof(vtx_str), "w");
-  char edge_str[1UL<<20UL];
+  char *vtx_str, *edge_str;
+  FILE * vtx_file;
   int edge_added = 0;
 
   int64_t which = 0;
   int first_vtx = 1;
   int_hm_seq_t * neighbors = int_hm_seq_new(1);
+
+  vtx_str = xmalloc (2UL<<20UL);
+  edge_str = &vtx_str[1UL<<20UL];
+  vtx_file = fmemopen(vtx_str, sizeof(vtx_str), "w");
 
   for(int64_t v = 0; v < groupsize; v++) {
     int64_t group_vtx = int_hm_seq_get(neighbors, group[v]);
@@ -180,16 +187,17 @@ group_to_json(stinger_t * S, int64_t * group, int64_t groupsize) {
   string_append_string(group_str, &vertices);
   string_append_string(group_str, &edges);
 
-  printf("GROUP OF VERTICES (");
-  for(int64_t v = 0; v < groupsize; v++) {
-    printf("%ld,", group[v]);
-  }
-  printf("):\n%s", group_str->str);
+  /* printf("GROUP OF VERTICES ("); */
+  /* for(int64_t v = 0; v < groupsize; v++) { */
+  /*   printf("%ld,", group[v]); */
+  /* } */
+  /* printf("):\n%s", group_str->str); */
 
   int_hm_seq_free(neighbors);
   fclose(vtx_file);
   string_free_internal(&vertices);
   string_free_internal(&edges);
+  free (vtx_str);
   return group_str;
 }
 
@@ -204,11 +212,14 @@ labeled_subgraph_to_json(stinger_t * S, int64_t src, int64_t * labels, const int
 
   int_hm_seq_t * neighbors = int_hm_seq_new(stinger_outdegree_get(S, src));
 
-  char vtx_str[1UL<<20UL];
-  FILE * vtx_file = fmemopen(vtx_str, sizeof(vtx_str), "w");
-  char edge_str[1UL<<20UL];
+  char *vtx_str, *edge_str;
+  FILE * vtx_file;
 
   int64_t which = 0;
+
+  vtx_str = xmalloc (2UL<<20UL);
+  edge_str = &vtx_str[1UL<<20UL];
+  vtx_file = fmemopen(vtx_str, sizeof(vtx_str), "w");
 
   uint8_t * found = xcalloc(sizeof(uint8_t), STINGER_MAX_LVERTICES);
   int64_t * queue = xmalloc(sizeof(int64_t) * (vtxlimit < 1? 1 : vtxlimit));
@@ -278,5 +289,6 @@ labeled_subgraph_to_json(stinger_t * S, int64_t src, int64_t * labels, const int
   fclose(vtx_file);
   string_free_internal(&vertices);
   string_free_internal(&edges);
+  free (vtx_str);
   return group_str;
 }
