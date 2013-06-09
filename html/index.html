@@ -279,7 +279,7 @@
         }
       }
 
-      $("#vtxlimit").val("1000");
+      $("#vtxlimit").val("500");
       setvtxlimit();
 
       function search() {
@@ -317,9 +317,9 @@
 		chartTimeout = window.setTimeout(updateChart, 3000);
 	      }
               */
-	    } /* else {
-	      chartTimeout = window.setTimeout(updateChart, 3000);
-	    } */
+	    } else {
+	      curTimeout = window.setTimeout(search, 3000);
+	    }
 	  });
       }
 
@@ -371,6 +371,10 @@
 	    }
 	  });
       }
+
+      $("#select_labels").val("CommunityIDs");
+      $("#twitter_handle").val("YouTube");
+      curTimeout = window.setTimeout (search, 200); /* Slight delay. */
 
        /*******************
        * Begin functions
