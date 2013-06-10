@@ -16,7 +16,7 @@ egonet_to_json(stinger_t * S, int64_t vtx) {
 
   vtx_str = xmalloc (2UL<<20UL);
   edge_str = &vtx_str[1UL<<20UL];
-  vtx_file = fmemopen(vtx_str, sizeof(vtx_str), "w");
+  vtx_file = fmemopen(vtx_str, sizeof(vtx_str) * 1UL<<20UL, "w");
 
   stinger_vertex_to_json_with_type_strings(stinger_vertices_get(S), stinger_vtype_names_get(S), stinger_physmap_get(S), vtx, vtx_file, 2);
   fflush(vtx_file);
@@ -115,7 +115,7 @@ group_to_json(stinger_t * S, int64_t * group, int64_t groupsize) {
 
   vtx_str = xmalloc (2UL<<20UL);
   edge_str = &vtx_str[1UL<<20UL];
-  vtx_file = fmemopen(vtx_str, sizeof(vtx_str), "w");
+  vtx_file = fmemopen(vtx_str, sizeof(vtx_str) * 1UL<<20UL, "w");
 
   for(int64_t v = 0; v < groupsize; v++) {
     int64_t group_vtx = int_hm_seq_get(neighbors, group[v]);
@@ -219,7 +219,7 @@ labeled_subgraph_to_json(stinger_t * S, int64_t src, int64_t * labels, const int
 
   vtx_str = xmalloc (2UL<<20UL);
   edge_str = &vtx_str[1UL<<20UL];
-  vtx_file = fmemopen(vtx_str, sizeof(vtx_str), "w");
+  vtx_file = fmemopen(vtx_str, sizeof(vtx_str) * 1UL<<20UL, "w");
 
   uint8_t * found = xcalloc(sizeof(uint8_t), STINGER_MAX_LVERTICES);
   int64_t * queue = xmalloc(sizeof(int64_t) * (vtxlimit < 1? 1 : vtxlimit));

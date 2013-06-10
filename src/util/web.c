@@ -351,6 +351,8 @@ begin_request_handler(struct mg_connection *conn)
     char limitbuf[64];
 
     if(suburi[0] == '/') {
+      suburi+=1;
+
       int64_t new_vtxlimit;
       /* setting the vertex limit. */
       suburi++;
@@ -535,7 +537,11 @@ begin_request_handler(struct mg_connection *conn)
 		rslt->len, rslt->str);
 	    string_free(rslt);
 	  return 1;
+	} else {
+	  printf("WARNING Failed request for vertex %s\n", suburi);
 	}
+      } else {
+	printf("WARNING Failed request for label %s\n", tmp);
       }
     }
 
