@@ -355,7 +355,6 @@ begin_request_handler(struct mg_connection *conn)
 
       int64_t new_vtxlimit;
       /* setting the vertex limit. */
-      suburi++;
       errno = 0;
       new_vtxlimit = strtol (suburi, NULL, 10);
       if (!errno && new_vtxlimit >= 0) vtxlimit = new_vtxlimit;
