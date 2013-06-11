@@ -1,5 +1,6 @@
 #include "astring.h"
 #include <stdlib.h>
+#include <string.h>
 
 static int64_t
 mix(int64_t n) {
@@ -87,21 +88,30 @@ string_new_from_cstr(char * c) {
   return str;
 }
 
+static inline void
+extend (string_t * s, size_t min_size)
+{
+  size_t new_max;
+  char *new_str;
+  if (s->max > min_size) return;
+  new_max = s->max;
+  do new_max *= 2; while (new_max <= min_size);
+  new_str = realloc (s->str, new_max);
+  if (!new_str) abort ();
+  memset (&new_str[s->max], 0, new_max-s->max);
+  s->str = new_str;
+  s->max = new_max;
+}
+
 void
 string_append_char(string_t * s, char c) {
-  if(s->len >= s->max-1) {
-    s->max *= 2;
-    s->str = realloc(s->str, s->max);
-  }
+  extend (s, s->len+1);
   s->str[s->len++] = c;
 }
 
 void
 string_prepend_char(string_t * s, char c) {
-  if(s->len >= s->max-1) {
-    s->max *= 2;
-    s->str = realloc(s->str, s->max);
-  }
+  extend (s, s->len+1);
   int i = s->len++;
   while(i > 0) {
     s->str[i] = s->str[i-1];
@@ -112,10 +122,7 @@ string_prepend_char(string_t * s, char c) {
 
 void
 string_append_string(string_t * dest, string_t * source) {
-  while(dest->len + source->len >= dest->max-1) {
-    dest->max *= 2;
-    dest->str = realloc(dest->str, dest->max);
-  }
+  extend (dest, dest->len + source->len);
   char * c = source->str;
   while(c < source->str + source->len) {
     dest->str[dest->len++] = *c;
@@ -125,10 +132,7 @@ string_append_string(string_t * dest, string_t * source) {
 
 void
 string_append_cstr_len(string_t * dest, char * s, int len) {
-  while(dest->len + len >= dest->max-1) {
-    dest->max *= 2;
-    dest->str = realloc(dest->str, dest->max);
-  }
+  extend (dest, dest->len + len);
   char * c = s;
   while(c < s + len) {
     dest->str[dest->len++] = *c;
@@ -143,10 +147,7 @@ string_append_cstr(string_t * dest, char * s) {
   while(*l != '\0') {
     len++; l++;
   }
-  while(dest->len + len >= dest->max-1) {
-    dest->max *= 2;
-    dest->str = realloc(dest->str, dest->max);
-  }
+  extend (dest, dest->len + len);
   char * c = s;
   while(c < s + len) {
     dest->str[dest->len++] = *c;
