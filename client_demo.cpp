@@ -150,7 +150,7 @@ main(int argc, char *argv[])
   int use_strings = 0;
   struct sockaddr_in server_addr = { 0 };
   struct hostent * server = NULL;
-  char * filename;
+  char * filename = NULL;
 
   int opt = 0;
   while(-1 != (opt = getopt(argc, argv, "p:b:d:a:sjx:y:i:o:"))) {
@@ -201,7 +201,7 @@ main(int argc, char *argv[])
 
       case '?':
       case 'h': {
-	printf("Usage:    %s [-p src_port] [-d dst_port] [-a server_addr] [-b buffer_size] [-s for strings] [-x batch_size] [-y num_batches] [-i in_seconds] [-o out_seconds] [-j] <input file>\n", argv[0]);
+	printf("Usage:    %s [-p src_port] [-d dst_port] [-a server_addr] [-b buffer_size] [-s for strings] [-x batch_size] [-y num_batches] [-i in_seconds] [-o out_seconds] [-j] [<input file>]\n", argv[0]);
 	printf("Defaults: src_port: %d dest_port: %d server: localhost buffer_size: %lu use_strings: %d\n", src_port, dst_port, (unsigned long) buffer_size, use_strings);
 	printf("\nCSV file format is is_delete,source,dest,weight,time where weight and time are\n"
 		 "optional 64-bit integers and source and dest are either strings or\n"
@@ -219,12 +219,8 @@ main(int argc, char *argv[])
     }
   }
 
-  if(optind >= argc) {
-    perror("Expected input filename. -? for help");
-    exit(0);
-  } else {
+  if (optind < argc && 0 != strcmp (filename, "-"))
     filename = argv[optind];
-  }
 
   V_A("Running with: src_port: %d dst_port: %d buffer_size: %lu string-vertices: %d\n", src_port, dst_port, (unsigned long) buffer_size, use_strings);
 
@@ -270,7 +266,7 @@ main(int argc, char *argv[])
   }
 
 
-  FILE * fp = fopen(filename, "r");
+  FILE * fp = (filename? fopen(filename, "r") : stdin);
 
   if(!is_json) {
     char * buf = NULL, ** fields = NULL;
