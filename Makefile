@@ -45,6 +45,9 @@ CFLAGS+= -Ilib/protobuf-2.5.0/src -Iinc/alg -Iinc/stream -Iinc/util -Isrc/proto 
 
 STINGER_DEMO_SRC = src-demo/community-update.c src-demo/community.c src-demo/graph-el.c src-demo/sorts.c src-demo/xmt-luc.cc
 STINGER_DEMO_OBJ = $(subst .c,.o,$(subst .cc,.o,$(STINGER_DEMO_SRC)))
+# There are race conditions in the community debugging code:
+src-demo/community.o: CPPFLAGS+=-DNDEBUG
+src-demo/community-update.o: CPPFLAGS+=-DNDEBUG
 
 inc/fragments/%.h: inc/fragments/%
 	head -n 1 $^ > $@
