@@ -109,6 +109,10 @@ init_empty_community_state (struct community_state * cstate,
 
   cstate->cg = alloc_graph (graph_nv, ne_est);
   cstate->cg.ne = 0;
+  intvtx_t * restrict d = cstate->cg.d;
+  OMP("omp parallel for")
+    for (int64_t k = 0; k < graph_nv; ++k)
+      d[k] = 0;
 }
 
 void
