@@ -267,9 +267,11 @@
 
       d3.json("/getlabels/",
 	function(error, data) {
+	  var lbls = data.labels;
+	  lbls.push("LocalComm");
 	  d3.select("#select_labels")
 	    .selectAll("option")
-	    .data(data.labels)
+	    .data(lbls)
 	    .enter()
 	    .append("option")
 	    .text(function(d) {return d});
@@ -286,7 +288,14 @@
       setvtxlimit();
 
       function search() {
-	d3.json("/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val().toLowerCase(),
+        var lbl = $("#select_labels").val();
+	var url;
+	if (lbl === "LocalComm" || lbl === "") {
+	  url = "/getlabelcomm/byphysid/" + $("#twitter_handle").val().toLowerCase();
+        } else {
+	  url = "/getlabelnet/" + lbl + "/byphysid/" + $("#twitter_handle").val().toLowerCase();
+        }
+	d3.json(url,
 	  function(error, graph) {
 	    if(!error) {
 	      graphjson = graph;
@@ -342,7 +351,15 @@
       }
 
       function updateGraph() {
-	d3.json("/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val().toLowerCase(),
+        setvtxlimit (); /* In case the server has restarted... */
+        var lbl = $("#select_labels").val();
+	var url;
+	if (lbl === "LocalComm" || lbl === "") {
+	  url = "/getlabelcomm/byphysid/" + $("#twitter_handle").val().toLowerCase();
+        } else {
+	  url = "/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val().toLowerCase();
+        }
+	d3.json(url,
 	  function(error, graph) {
 	    if(!error) {
 	      graph.vertices.forEach(function(d, i) {

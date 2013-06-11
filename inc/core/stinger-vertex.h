@@ -78,6 +78,7 @@ struct stinger_vertices
 {
   int64_t	    max_vertices;
   int64_t	    max_active_vertex;
+  int64_t           total_weight; /* XXX: not maintained correctly through the far-too-many never-used accessors defined. */
   stinger_vertex_t  vertices[0];
 };
 

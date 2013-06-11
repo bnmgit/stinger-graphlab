@@ -547,6 +547,42 @@ begin_request_handler(struct mg_connection *conn)
     return 0;
   }
 
+  if(0 == strncmp(request_info->uri, "/getlabelcomm", 12)) {
+    const char * suburi = request_info->uri + 12;
+    if(suburi[0] == '/') suburi++;
+
+    char tmp[1024];
+    char * len = strchr(suburi, '/');
+    int all = 0;
+    if(len) {
+      int64_t vtx = 0;
+      suburi = len+1;
+      if(0 == strncmp(suburi, "byphysid/", 9)) {
+	suburi += 9;
+	vtx = stinger_mapping_lookup(S, suburi, strlen(suburi));
+      } else {
+	vtx = atoi(suburi);
+      }
+
+      if(vtx < STINGER_MAX_LVERTICES && vtx >= 0) {
+	extern string_t * vtxcomm_to_json(stinger_t*, int64_t, int64_t);
+	string_t * rslt = vtxcomm_to_json(S, vtx, vtxlimit);
+	assert (rslt);
+	mg_printf(conn,
+		  "HTTP/1.1 200 OK\r\n"
+		  "Content-Type: text/plain\r\n"
+		  "Content-Length: %d\r\n"        // Always set Content-Length
+		  "\r\n"
+		  "%s",
+		  rslt->len, rslt->str);
+	string_free(rslt);
+	return 1;
+      }
+    }
+
+    return 0;
+  }
+
   if(0 == strncmp(request_info->uri, "/getstingerid", 13)) {
     const char * suburi = request_info->uri + 13;
     if(suburi[0] == '/') suburi++;
