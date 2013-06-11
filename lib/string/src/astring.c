@@ -123,36 +123,21 @@ string_prepend_char(string_t * s, char c) {
 void
 string_append_string(string_t * dest, string_t * source) {
   extend (dest, dest->len + source->len);
-  char * c = source->str;
-  while(c < source->str + source->len) {
-    dest->str[dest->len++] = *c;
-    c++;
-  }
+  memcpy (&dest->str[dest->len], source->str, source->len);
+  dest->len += source->len;
 }
 
 void
 string_append_cstr_len(string_t * dest, char * s, int len) {
   extend (dest, dest->len + len);
-  char * c = s;
-  while(c < s + len) {
-    dest->str[dest->len++] = *c;
-    c++;
-  }
+  memcpy (&dest->str[dest->len], s, len);
+  dest->len += len;
 }
 
 void
 string_append_cstr(string_t * dest, char * s) {
-  int len = 0;
-  char * l = s;
-  while(*l != '\0') {
-    len++; l++;
-  }
-  extend (dest, dest->len + len);
-  char * c = s;
-  while(c < s + len) {
-    dest->str[dest->len++] = *c;
-    c++;
-  }
+  size_t len = strlen (s);
+  string_append_cstr_len (dest, s, len);
 }
 
 int
