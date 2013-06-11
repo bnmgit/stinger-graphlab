@@ -24,6 +24,7 @@ extern "C" {
 
 #include <cstdio>
 #include <algorithm>
+#include <limits>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -58,6 +59,7 @@ static bool dropped_vertices = false;
 
 struct community_state cstate;
 int64_t n_components, n_nonsingleton_components, max_compsize;
+int64_t min_batch_ts, max_batch_ts;
 static int64_t * comp_vlist;
 static int64_t * comp_mark;
 
@@ -131,7 +133,13 @@ process_batch(stinger_t * S, StingerBatch & batch,
   incr = (int64_t*)xmalloc ((3 * batch.insertions_size () + 2 * batch.deletions_size ()) * sizeof (*incr));
   rem = &incr[3 * batch.insertions_size ()];
 
+  min_batch_ts = std::numeric_limits<int64_t>::max();
+  max_batch_ts = 0;
+
+#define TS(ea_) do { const int64_t ts = (ea_).time(); if (ts > mxts) mxts = ts; if (ts < mnts) mnts = ts; } while (0)
+
   OMP("omp parallel") {
+    int64_t mxts = 0, mnts = std::numeric_limits<int64_t>::max();
     std::string src, dest; /* Thread-local buffers */
     switch (batch.type ()) {
     case NUMBERS_ONLY:
@@ -140,6 +148,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	  const EdgeInsertion & in = batch.insertions(i);
 	  const int64_t u = in.source ();
 	  const int64_t v = in.destination ();
+	  TS(in);
 	  if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
 	    ACCUM_INCR;
 	  else {
@@ -157,6 +166,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	  const EdgeDeletion & del = batch.deletions(d);
 	  const int64_t u = del.source ();
 	  const int64_t v = del.destination ();
+	  //TS(del);
 	  if (u < STINGER_MAX_LVERTICES && v < STINGER_MAX_LVERTICES)
 	    ACCUM_REM;
 	  else {
@@ -175,6 +185,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	for (size_t i = 0; i < batch.insertions_size(); i++) {
 	  const EdgeInsertion & in = batch.insertions(i);
 	  int64_t u, v;
+	  TS(in);
 	  src_string (in, src);
 	  dest_string (in, dest);
 	  stinger_mapping_create(S, src.c_str(), src.length(), &u);
@@ -195,6 +206,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	for(size_t d = 0; d < batch.deletions_size(); d++) {
 	  const EdgeDeletion & del = batch.deletions(d);
 	  int64_t u, v;
+	  //TS(del);
 	  src_string (del, src);
 	  dest_string (del, dest);
 	  u = stinger_mapping_lookup(S, src.c_str(), src.length());
@@ -220,6 +232,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	for (size_t i = 0; i < batch.insertions_size(); i++) {
 	  const EdgeInsertion & in = batch.insertions(i);
 	  int64_t u, v;
+	  TS(in);
 	  if (in.has_source())
 	    u = in.source();
 	  else {
@@ -250,6 +263,7 @@ process_batch(stinger_t * S, StingerBatch & batch,
 	for(size_t d = 0; d < batch.deletions_size(); d++) {
 	  const EdgeDeletion & del = batch.deletions(d);
 	  int64_t u, v;
+	  //TS(del);
 
 	  if (del.has_source())
 	    u = del.source();
@@ -283,12 +297,68 @@ process_batch(stinger_t * S, StingerBatch & batch,
     default:
       abort ();
     }
+
+    OMP("omp critical") {
+      if (mxts > max_batch_ts) max_batch_ts = mxts;
+      if (mnts < min_batch_ts) min_batch_ts = mnts;
+    }
   }
+
+#undef TS
 
   cstate_preproc (cstate, S, nincr, incr, nrem, rem);
 
   free (incr);
   return 0;
+}
+
+static void
+split_day_in_year (int diy, int * month, int * dom)
+{
+  int mn = 0;
+#define OUT do { *month = mn; *dom = diy; return; } while (0)
+#define MONTH(d_) if (diy < (d_)) OUT; diy -= (d_); ++mn
+  MONTH(31);
+  MONTH(28); 
+  MONTH(31);
+  MONTH(30);
+  MONTH(31);
+  MONTH(30);
+  MONTH(31);
+  MONTH(31);
+  MONTH(30);
+  MONTH(31);
+  MONTH(30);
+  MONTH(31);
+  assert (0);
+  *month = -1;
+  *dom = -1;
+}
+
+static const char *
+month_name[12] = { "Jan", "Feb", "Mar", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+static void
+ts_to_str (int64_t ts_in, char * out, size_t len)
+{
+  int64_t ts = ts_in;
+  ts += (31 + 28)*24*3600; /* XXX: Sample starts in March. */
+  ts -= 7*3600; /* XXX: Pacific is seven hours behind UTC. */
+  const bool pst =
+    (ts < (2*3600 + (9 + 31+28)*24*3600)) &&
+    (ts < (2*3600 + (3 + 31+28+31+30+31+30+31+31+30+31)*24*3600))
+	 ; /* 2am 10 Mar to 2am 3 Nov */
+  if (pst) ts += 3600;
+  const int sec = ts%60;
+  const int min = (ts/60)%60;
+  const int hr = (ts/(60*60))%24;
+  const int day_in_year = ts_in / (60*60*24);
+  int month, dom;
+  split_day_in_year (day_in_year, &month, &dom);
+  snprintf (out, len, "%2d:%02d:%02d P%cT %d %s 2013",
+	    hr, min, sec,
+	    (pst? 'S' : 'D'),
+	    dom, month_name[month]);
 }
 
 int
@@ -400,6 +470,14 @@ main(int argc, char *argv[])
 	processing_time_start = timer ();
 
 	process_batch(S, batch, &cstate);
+
+	{
+	  char mints[100], maxts[100];
+
+	  ts_to_str (min_batch_ts, mints, sizeof (mints)-1);
+	  ts_to_str (max_batch_ts, maxts, sizeof (maxts)-1);
+	  V_A("Time stamp range: %s ... %s", mints, maxts);
+	}
 
 	components_batch(S, STINGER_MAX_LVERTICES, components);
 
@@ -536,13 +614,21 @@ extern "C" {
 void
 grotty_nasty_stats_hack (char *ugh)
 {
+  char mints[100], maxts[100];
+
+  ts_to_str (min_batch_ts, mints, sizeof (mints)-1);
+  ts_to_str (max_batch_ts, maxts, sizeof (maxts)-1);
+
   snprintf (ugh, 2048, "{ \"n_nonsingleton_components\" : %ld, "
-	   "\"max_compsize\" : %ld, "
-	   "\"n_nonsingleton_communities\" : %ld, "
-	   "\"max_commsize\" : %ld, "
-	   "\"modularity\" : %g }",
+	    "\"max_compsize\" : %ld, "
+	    "\"n_nonsingleton_communities\" : %ld, "
+	    "\"max_commsize\" : %ld, "
+	    "\"modularity\" : %g, "
+	    "\"mints\" : \"%s\", \"maxts\" : \"%s\""
+	    " }",
 	    (long)n_nonsingleton_components, (long)max_compsize,
 	    (long)cstate.n_nonsingletons, (long)cstate.max_csize,
-	    cstate.modularity);
+	    cstate.modularity,
+	    mints, maxts);
 }
 }
