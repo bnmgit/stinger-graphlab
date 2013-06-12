@@ -471,6 +471,13 @@ main(int argc, char *argv[])
 
 	process_batch(S, batch, &cstate);
 
+	components_batch(S, STINGER_MAX_LVERTICES, components);
+
+	cstate_update (&cstate, S);
+
+	processing_time = timer () - processing_time_start;
+	spdup = (max_batch_ts - min_batch_ts) / processing_time;
+
 	{
 	  char mints[100], maxts[100];
 
@@ -478,13 +485,6 @@ main(int argc, char *argv[])
 	  ts_to_str (max_batch_ts, maxts, sizeof (maxts)-1);
 	  V_A("Time stamp range: %s ... %s", mints, maxts);
 	}
-
-	components_batch(S, STINGER_MAX_LVERTICES, components);
-
-	cstate_update (&cstate, S);
-
-	processing_time = timer () - processing_time_start;
-	spdup = (max_batch_ts - min_batch_ts) / processing_time;
 
 	V_A("Number of non-singleton components %ld/%ld, max size %ld",
 	    (long)n_nonsingleton_components, (long)n_components,
