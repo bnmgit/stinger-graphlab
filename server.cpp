@@ -60,6 +60,7 @@ static bool dropped_vertices = false;
 struct community_state cstate;
 int64_t n_components, n_nonsingleton_components, max_compsize;
 int64_t min_batch_ts, max_batch_ts;
+double processing_time, spdup;
 static int64_t * comp_vlist;
 static int64_t * comp_mark;
 
@@ -430,7 +431,6 @@ main(int argc, char *argv[])
   OMP("omp parallel for")
     for (int64_t k = 0; k < STINGER_MAX_LVERTICES; ++k) comp_mark[k] = -1;
   double * centralities = (double *)xmalloc(sizeof(double) * STINGER_MAX_LVERTICES);
-  double processing_time;
 
   init_empty_community_state (&cstate, STINGER_MAX_LVERTICES, 2*STINGER_MAX_LVERTICES);
 
@@ -484,6 +484,7 @@ main(int argc, char *argv[])
 	cstate_update (&cstate, S);
 
 	processing_time = timer () - processing_time_start;
+	spdup = (max_batch_ts - min_batch_ts) / processing_time;
 
 	V_A("Number of non-singleton components %ld/%ld, max size %ld",
 	    (long)n_nonsingleton_components, (long)n_components,
@@ -494,7 +495,8 @@ main(int argc, char *argv[])
 	    (long)cstate.max_csize,
 	    cstate.modularity);
 
-	V_A("Total processing time: %g", processing_time);
+	V_A("Total time: %ld, processing time: %g, speedup %g",
+	    (long)(max_batch_ts-min_batch_ts), processing_time, spdup);
 
 	if(!batch.keep_alive())
 	  break;
@@ -624,11 +626,13 @@ grotty_nasty_stats_hack (char *ugh)
 	    "\"n_nonsingleton_communities\" : %ld, "
 	    "\"max_commsize\" : %ld, "
 	    "\"modularity\" : %g, "
-	    "\"mints\" : \"%s\", \"maxts\" : \"%s\""
+	    "\"mints\" : \"%s\", \"maxts\" : \"%s\", "
+	    "\"timespan\" : %ld, \"proctime\": %g, \"spdup\" : %g"
 	    " }",
 	    (long)n_nonsingleton_components, (long)max_compsize,
 	    (long)cstate.n_nonsingletons, (long)cstate.max_csize,
 	    cstate.modularity,
-	    mints, maxts);
+	    mints, maxts,
+	    (long)(max_batch_ts-min_batch_ts), processing_time, spdup);
 }
 }
