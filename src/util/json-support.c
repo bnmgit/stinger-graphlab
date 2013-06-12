@@ -308,7 +308,7 @@ so...  keep frontier as (vtx, W, vol).  find least every time, swap to first.
 
 static void
 expand_vtx (int64_t vtx, int64_t *nset_out, int64_t * restrict set,
-	    int64_t * restrict mark,
+	    int64_t * restrict mark, const int64_t * restrict label,
 	    int64_t vtxlimit, const struct stinger * restrict S)
 {
   assert (nset_out);
@@ -318,6 +318,7 @@ expand_vtx (int64_t vtx, int64_t *nset_out, int64_t * restrict set,
   int64_t * restrict Wvol = xmalloc (NV * 2 * sizeof (*Wvol));
   int64_t setvol = 0;
   const int64_t totweight = S->vertices->total_weight;
+  const int64_t vlbl = (label? label[vtx] : -1);
 
   if (vtxlimit > NV) vtxlimit = NV;
   /* XXX: Might be wise: if (vtxlimit > 100) vtxlimit = 100; */
@@ -336,40 +337,48 @@ expand_vtx (int64_t vtx, int64_t *nset_out, int64_t * restrict set,
       const int64_t v = STINGER_EDGE_DEST;
       assert(v >= 0);
       assert(v < NV);
-      const int64_t wgt = STINGER_EDGE_WEIGHT;
-      uvol += wgt;
-      int64_t where = mark[v];
-      assert(where < NV);
-      if (where >= 0) {
-	Wvol[2*where] += wgt;
-      } else {
-	int64_t vW = 0;
-	int64_t vvol = 0;
-	where = front_end++;
-	assert(where >= 0);
+      if (!label || vlbl == label[v]) {
+	const int64_t wgt = STINGER_EDGE_WEIGHT;
+	uvol += wgt;
+	int64_t where = mark[v];
 	assert(where < NV);
-	STINGER_FORALL_EDGES_OF_VTX_BEGIN(S, v) {
-	  const int64_t z = STINGER_EDGE_DEST;
-	  assert(z >= 0);
-	  assert(z < NV);
-	  const int64_t vz_weight = STINGER_EDGE_WEIGHT;
-	  vvol += vz_weight;
-	  if (mark[z] >= 0) vW += vz_weight;
-	} STINGER_FORALL_EDGES_OF_VTX_END();
-	set[where] = v;
-	Wvol[2*where] = vW;
-	Wvol[1+2*where] = vvol;
-	mark[v] = where;
+	if (where >= 0) {
+	  Wvol[2*where] += wgt;
+	} else {
+	  int64_t vW = 0;
+	  int64_t vvol = 0;
+	  where = front_end++;
+	  assert(where >= 0);
+	  assert(where < NV);
+	  STINGER_FORALL_EDGES_OF_VTX_BEGIN(S, v) {
+	    const int64_t z = STINGER_EDGE_DEST;
+	    assert(z >= 0);
+	    assert(z < NV);
+	    const int64_t vz_weight = STINGER_EDGE_WEIGHT;
+	    vvol += vz_weight;
+	    if (mark[z] >= 0) vW += vz_weight;
+	  } STINGER_FORALL_EDGES_OF_VTX_END();
+	  set[where] = v;
+	  Wvol[2*where] = vW;
+	  Wvol[1+2*where] = vvol;
+	  mark[v] = where;
+	}
       }
     } STINGER_FORALL_EDGES_OF_VTX_END();
 
     setvol += uvol;
 
+    if (nset == front_end) break;
+
     /* Choose next vtx. */
-    double best_score = 0;
+    double best_score;
     const double setvol_scale = setvol / (double)totweight;
-    int64_t best_loc = -1;
-    for (int64_t k = nset; k < front_end; ++k) {
+    int64_t best_loc;
+
+    best_loc = nset;
+    best_score = Wvol[2*best_loc] - Wvol[1+2*best_loc] * setvol_scale;
+
+    for (int64_t k = nset+1; k < front_end; ++k) {
       /* constant factor of two and iteration constant total_weight ignored. */
       const double score = Wvol[2*k] - Wvol[1+2*k] * setvol_scale;
       if (score > best_score) {
@@ -378,7 +387,7 @@ expand_vtx (int64_t vtx, int64_t *nset_out, int64_t * restrict set,
       }
     }
 
-    if (best_loc < 0) /* Nothing improves the set, done. */
+    if ((!label && best_score < 0) ) /* Nothing improves the set, done. */
       break;
 
     assert (best_loc < NV);
@@ -402,7 +411,7 @@ expand_vtx (int64_t vtx, int64_t *nset_out, int64_t * restrict set,
 string_t *
 vtxcomm_to_json(stinger_t * S, int64_t vtx, int64_t vtxlimit) {
   const int64_t NV = STINGER_MAX_LVERTICES;
-  if (vtxlimit == 0 || vtxlimit > 100) vtxlimit = 100;
+  //if (vtxlimit == 0 || vtxlimit > 100) vtxlimit = 100;
   int64_t nset = 0;
   int64_t * set = xmalloc (2 * NV * sizeof (*set));
   int64_t * restrict mark = &set[NV];
@@ -410,7 +419,34 @@ vtxcomm_to_json(stinger_t * S, int64_t vtx, int64_t vtxlimit) {
 
   for (int64_t k = 0; k < NV; ++k)
     mark[k] = -1;
-  expand_vtx (vtx, &nset, set, mark, vtxlimit, S);
+  expand_vtx (vtx, &nset, set, mark, NULL, vtxlimit, S);
+  for (int64_t k = 0; k < NV; ++k)
+    mark[k] = 0;
+
+  for (int64_t k = 0; k < nset; ++k) {
+    assert(set[k] >= 0);
+    assert(set[k] < NV);
+    mark[set[k]] = 1;
+  }
+  out = labeled_subgraph_to_json (S, vtx, mark, vtxlimit);
+  /* Expands too much? out = group_to_json (S, set, nset); */
+  free (set);
+  return out;
+}
+
+string_t *
+vtxcomm_label_to_json(stinger_t * S, int64_t vtx, int64_t vtxlimit,
+		      const int64_t * label)
+{
+  const int64_t NV = STINGER_MAX_LVERTICES;
+  int64_t nset = 0;
+  int64_t * set = xmalloc (2 * NV * sizeof (*set));
+  int64_t * restrict mark = &set[NV];
+  string_t * out = NULL;
+
+  for (int64_t k = 0; k < NV; ++k)
+    mark[k] = -1;
+  expand_vtx (vtx, &nset, set, mark, label, vtxlimit, S);
   for (int64_t k = 0; k < NV; ++k)
     mark[k] = 0;
 

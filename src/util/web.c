@@ -526,7 +526,13 @@ begin_request_handler(struct mg_connection *conn)
 	}
 
 	if(vtx < STINGER_MAX_LVERTICES && vtx >= 0) {
-	    string_t * rslt = labeled_subgraph_to_json(S, vtx, kve_get_ptr(val), vtxlimit);
+	    string_t * rslt;
+	    if (!vtxlimit || vtxlimit >= STINGER_MAX_LVERTICES)
+	        rslt = labeled_subgraph_to_json(S, vtx, kve_get_ptr(val), vtxlimit);
+	    else {
+	        extern string_t * vtxcomm_label_to_json(stinger_t*, int64_t, int64_t, const int64_t *);
+	        rslt = vtxcomm_label_to_json(S, vtx, vtxlimit, kve_get_ptr (val));
+	    }
 	    mg_printf(conn,
 		"HTTP/1.1 200 OK\r\n"
 		"Content-Type: text/plain\r\n"
