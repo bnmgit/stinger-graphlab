@@ -38,17 +38,14 @@
       <div class="row">
 	<h2 class="">Search</h2>
 	<div class="span12">
-	  <form class="form-inline " action="javascript:search();">
+	  <form class="form-inline " action="">
 	    <select id="select_labels">
 	    </select>
-	    <input id="twitter_handle" type="text" class="input-medium" placeholder="Twitter Handle">
-	    <button type="submit" class="btn">Search</button>
-	  </form>
-	  <form class="form-inline " action="javascript:setvtxlimit();">
+	    <input id="twitter_handle" type="text" class="input-medium"
+		   placeholder="Twitter Handle">
 	    Vertex limit:
 	    <input id="vtxlimit" type="text" class="input-medium"
 		   placeholder="Vertex limit">
-	    <button type="submit" class="btn">Set</button>
 	  </form>
 	</div>
 	<div class="span12">
@@ -232,6 +229,8 @@
       var curTimeout = null;
       var statsTimeout = null;
 
+      var curhandle = null;
+
       /* mappings from stingerland to d3lang */
       var nodemap = {}, linkmap = {};
 
@@ -290,10 +289,11 @@
       function search() {
         var lbl = $("#select_labels").val();
 	var url;
+	curhandle = $("#twitter_handle").val().toLowerCase();
 	if (lbl === "LocalComm" || lbl === "") {
-	  url = "/getlabelcomm/byphysid/" + $("#twitter_handle").val().toLowerCase();
+	  url = "/getlabelcomm/byphysid/" + curhandle;
         } else {
-	  url = "/getlabelnet/" + lbl + "/byphysid/" + $("#twitter_handle").val().toLowerCase();
+	  url = "/getlabelnet/" + lbl + "/byphysid/" + curhandle;
         }
 	d3.json(url,
 	  function(error, graph) {
@@ -354,10 +354,11 @@
         setvtxlimit (); /* In case the server has restarted... */
         var lbl = $("#select_labels").val();
 	var url;
+	curhandle = $("#twitter_handle").val().toLowerCase();
 	if (lbl === "LocalComm" || lbl === "") {
-	  url = "/getlabelcomm/byphysid/" + $("#twitter_handle").val().toLowerCase();
+	  url = "/getlabelcomm/byphysid/" + curhandle;
         } else {
-	  url = "/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + $("#twitter_handle").val().toLowerCase();
+	  url = "/getlabelnet/" + $("#select_labels").val() + "/byphysid/" + curhandle;
         }
 	d3.json(url,
 	  function(error, graph) {
@@ -464,7 +465,8 @@
 	    .attr("r", 5) 
 	    .on("mouseover", function(d, i) { d3.select(this).style("fill", "green"); highlightEdgesOf(true, d); })
 	    .on("mouseout", function(d, i) { d3.select(this).style("fill", function(d) {return color(d.vtype); }); if(!document.getElementById("stayLit").checked) highlightEdgesOf(false, d); })
-	    .style("fill", function(d) { return color(d.vtype); }) 
+	    .style("fill", function(d) { return color(d.vtype); })
+	    .style("stroke", function(d) { if (d.physID.id === curhandle) { return "red"; } else { return color(d.vtype); } })
 	    .call(force.drag)
 	    .append("title") 
 	    .text(function(d) { return "StingerID: " + d.vid + "\n" + "Name: " + d.physID.id + "\n" + "Type: " + d.vtype + "\n" + "Weight: " + d.vweight + "\n" + "Degree: " + d.outDegree; });
