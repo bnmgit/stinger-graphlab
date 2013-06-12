@@ -219,7 +219,7 @@ main(int argc, char *argv[])
     }
   }
 
-  if (optind < argc && 0 != strcmp (filename, "-"))
+  if (optind < argc && 0 != strcmp (argv[optind], "-"))
     filename = argv[optind];
 
   V_A("Running with: src_port: %d dst_port: %d buffer_size: %lu string-vertices: %d\n", src_port, dst_port, (unsigned long) buffer_size, use_strings);
@@ -267,6 +267,13 @@ main(int argc, char *argv[])
 
 
   FILE * fp = (filename? fopen(filename, "r") : stdin);
+  if (!fp) {
+    char errmsg[257];
+    snprintf (errmsg, 256, "Opening \"%s\" failed", filename);
+    errmsg[256] = 0;
+    perror (errmsg);
+    exit (-1);
+  }
 
   if(!is_json) {
     char * buf = NULL, ** fields = NULL;
