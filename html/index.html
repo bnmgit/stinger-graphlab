@@ -8,56 +8,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="lib/bootstrap/css/bootstrap_stinger.css" rel="stylesheet" media="screen">
     <style type="text/css">
-      .dl-horizontal dt {
-        white-space: normal;
-	width: 20%;
-        padding-right: 1em;
+      dl.compact {
+        width: 30%;
+        margin-left: 10%;
+      }
+      dl.compact dt
+      {
+        text-align: right;
+        float: left;
+	font-weight: bold;
+      }
+      dl.compact dd
+      {
+        text-align: right;
+        margin-left: 25%;
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <div class="row">
-	<h2 class="">Stats</h2>
+      <h2>Stats</h2>
+      <div>
 	<div id="statscontainer">
 	  <p>Time stamp range: <span id="mints">XXX</span> ... <span
 	  id="maxts">ZZZ</span>.</p>
 	  <p>Processed <span id="timespan">x</span>s in <span
 	  id="proctime">y</span>s, speed up <span
 	  id="spdup">z</span>.</p>
-	  <dl class="dl-horizontal">
-	    <dt># non-trivial components</dt><dd id="n_nonsingleton_components"></dd>
-	    <dt>Largest component size</dt><dd id="max_compsize"></dd>
-	    <dt># non-trivial communities</dt><dd id="n_nonsingleton_communities"></dd>
-	    <dt>Largest community size</dt><dd id="max_commsize"></dd>
-	    <dt>Modularity</dt><dd id="modularity"></dd>
+	  <dl class="compact well">
+	    <dt># non-trivial components</dt><dd id="n_nonsingleton_components">0</dd>
+	    <dt>Largest component size</dt><dd id="max_compsize">0</dd>
+	    <dt># non-trivial communities</dt><dd id="n_nonsingleton_communities">0</dd>
+	    <dt>Largest community size</dt><dd id="max_commsize">0</dd>
+	    <dt>Modularity</dt><dd id="modularity">0</dd>
 	  </dl>
 	</div>
       <!-- <div id="chartcontainer" style="height:360px"></div>
       </div> -->
-      <div class="row">
-	<h2 class="">Search</h2>
-	<div class="span12">
-	  <form class="form-inline " action="">
-	    <select id="select_labels">
-	    </select>
-	    <input id="twitter_handle" type="text" class="input-medium"
-		   placeholder="Twitter Handle">
-	    Vertex limit:
-	    <input id="vtxlimit" type="text" class="input-medium"
-		   placeholder="Vertex limit">
-	  </form>
-	</div>
-	<div class="span12">
-	  <div class="well">
-			 <p class="text-center">
-				 &nbsp;<graph></graph>&nbsp;
-			 </p>
-	  </div>
-	</div>
+      <h2>Search</h2>
+      <div class="span12">
+	<form class="form-inline " action="">
+	  <select id="select_labels">
+	  </select>
+	  <input id="twitter_handle" type="text" class="input-medium"
+		 placeholder="Twitter Handle">
+	  Vertex limit:
+	  <input id="vtxlimit" type="text" class="input-small"
+		 placeholder="limit">
+	</form>
+	<form class="form-inline " action="">
+	  Vertex degree range:
+	  <input id="vdegreeMin" type="text" class="input-small"
+		 placeholder="Min"> -
+	  <input id="vdegreeMax" type="text" class="input-small"
+		 placeholder="Max">
+	  Edge weight range:
+	  <input id="eweightMin" type="text" class="input-small"
+		 placeholder="Min"> -
+	  <input id="eweightMax" type="text" class="input-small"
+		 placeholder="Max">
+	</form>
       </div>
+      <div class="well">
+	<p class="text-center">
+	  &nbsp;<graph></graph>&nbsp;
+	</p>
+      </div>
+      <h2>Filter</h2>
          <div class="row">
-                 <h2>Filter</h2>
                  <div class="span6">
                     <div class="well">
                            <h3>Neighbors</h3>
@@ -73,8 +91,8 @@
                            </dd>
                            <dt>Degree</dt>
                            <dd>
-                               <input class="span3" id="vdegreeMin" type="text" placeholder="Min">
-                               <input class="span3" id="vdegreeMax" type="text" placeholder="Max">
+                               <input class="span3" id="vdegreeMin2nd" type="text" placeholder="Min">
+                               <input class="span3" id="vdegreeMax2nd" type="text" placeholder="Max">
                            </dd>
                            <dt></dt>
                            <dd><div class="btn-grp"><a class="btn" onclick="forceGraph()">Apply</a><a class="btn" onclick="resetVertices()">Clear</a></div></dd>
@@ -87,8 +105,8 @@
                            <dl class="dl-horizontal">
                            <dt>Weight</dt>
                            <dd>
-                               <input class="span3" id="eweightMin" type="text" placeholder="Min">
-                               <input class="span3" id="eweightMax" type="text" placeholder="Max">
+                               <input class="span3" id="eweightMin2nd" type="text" placeholder="Min">
+                               <input class="span3" id="eweightMax2nd" type="text" placeholder="Max">
                            </dd>
                            <dt>Type</dt>
                            <dd>
@@ -128,7 +146,6 @@
                <dt>Layout</dt><dd><div class="btn-grp"><a class="btn btn-success" onclick="unpauseLayout()" >Start</a><a class="btn btn-danger" onclick="pauseLayout()" >Stop</a></div></dd>
            </dl>
          </div></div>
-         <div class="row">
          <h3>Vertices</h3>
          <table class="table">
          <thead id="neighborshead"></thead>
@@ -139,7 +156,6 @@
          <thead id="edgeshead"></thead>
          <tbody id="edgesbody"></tbody>
          </table>
-         </div>
     </div>
     <!-- <script src="lib/bootstrap/js/bootstrap.min.js"></script> -->
     <script src="lib/jquery/jquery-2.0.1.min.js"></script>
@@ -283,7 +299,7 @@
         }
       }
 
-      $("#vtxlimit").val("500");
+      $("#vtxlimit").val("200");
       setvtxlimit();
 
       function search() {
@@ -432,6 +448,11 @@
 
 
       function forceGraph() {
+          if ($("#vdegreeMin2nd").val() !== "") { $("#vdegreeMin").val($("#vdegreeMin2nd").val())}
+          if ($("#vdegreeMax2nd").val() !== "") { $("#vdegreeMax").val($("#vdegreeMax2nd").val())}
+          if ($("#eweightMin2nd").val() !== "") { $("#eweightMin").val($("#eweightMin2nd").val())}
+          if ($("#eweightMax2nd").val() !== "") { $("#eweightMax").val($("#eweightMax2nd").val())}
+
 	  nodedata = nodedata.filter(vertexFilter);
 	  linkdata = linkdata.filter(edgeFilter);
 	  nodedata = nodedata.filter(vertexFilter);
