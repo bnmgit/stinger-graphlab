@@ -343,6 +343,7 @@ expand_vtx (int64_t vtx, int64_t *nset_out, int64_t * restrict set,
 	int64_t where = mark[v];
 	assert(where < NV);
 	if (where >= 0) {
+	  /* XXX: May be over-counting, but produces a more clustered-looking visual. */
 	  Wvol[2*where] += wgt;
 	} else {
 	  int64_t vW = 0;
@@ -381,7 +382,7 @@ expand_vtx (int64_t vtx, int64_t *nset_out, int64_t * restrict set,
     for (int64_t k = nset+1; k < front_end; ++k) {
       /* constant factor of two and iteration constant total_weight ignored. */
       const double score = Wvol[2*k] - Wvol[1+2*k] * setvol_scale;
-      if (score > best_score) {
+      if ((score > best_score) || (score == best_score && (Wvol[2*k] > Wvol[2*best_loc]))) {
 	best_loc = k;
 	best_score = score;
       }
