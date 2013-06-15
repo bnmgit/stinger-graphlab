@@ -786,7 +786,6 @@ update_edge_data (struct stinger * S, struct stinger_eb *eb,
 
   /* insertion */
   if(neighbor >= 0) {
-    e->weight = weight;
     /* is this a new edge */
     if(e->neighbor < 0 || index >= eb->high) {
       e->neighbor = neighbor;
@@ -800,12 +799,17 @@ update_edge_data (struct stinger * S, struct stinger_eb *eb,
       /* register new edge */
       stinger_outdegree_increment_atomic(S, eb->vertexID, 1);
       stinger_indegree_increment_atomic(S, neighbor, 1);
+      stinger_int64_fetch_add (&S->vertices->total_weight, weight); /* XXX */
 
       if (index >= eb->high)
 	eb->high = index + 1;
 
       writexf(&e->timeFirst, ts);
+    } else {
+      int64_t wchange = weight - e->weight;
+      stinger_int64_fetch_add (&S->vertices->total_weight, wchange); /* XXX */
     }
+    e->weight = weight;
 
     /* check metadata and update - lock metadata for safety */
     if (ts < readff(&eb->smallStamp) || ts > eb->largeStamp) {
@@ -825,6 +829,7 @@ update_edge_data (struct stinger * S, struct stinger_eb *eb,
     stinger_indegree_increment_atomic(S, e->neighbor, -1);
     stinger_int64_fetch_add (&(eb->numEdges), -1);
     e->neighbor = neighbor;
+    stinger_int64_fetch_add (&S->vertices->total_weight, -e->weight); /* XXX */
   } 
 
   /* we always do this to update weight and  unlock the edge if needed */
