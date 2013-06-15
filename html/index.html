@@ -450,7 +450,7 @@
 	    .style("fill", function(d) { return color(d.vtype); }) 
 	    .call(force.drag)
 	    .append("title") 
-	    .text(function(d) { return "StingerID: " + d.vid + "\n" + "Name: " + d.physID.id + "\n" + "Type: " + d.vtype + "\n" + "Weight: " + d.vweight + "\n" + "Degree: " + d.outDegree; });
+	    .text(function(d) { return "StingerID: " + d.vid + "\n" + "Name: " + "\n" + "Type: " + d.vtype + "\n" + "Weight: " + d.vweight + "\n" + "Degree: " + d.outDegree; });
 
 	  svgnodes.exit().remove();
 
@@ -462,7 +462,7 @@
 	    .style("fill", function(d) { return color(d.vtype); }) 
 	    .call(force.drag)
 	    .select("title") 
-	    .text(function(d) { return "StingerID: " + d.vid + "\n" + "Name: " + d.physID.id + "\n" + "Type: " + d.vtype + "\n" + "Weight: " + d.vweight + "\n" + "Degree: " + d.outDegree; });
+	    .text(function(d) { return "StingerID: " + d.vid + "\n" + "Name: " + "\n" + "Type: " + d.vtype + "\n" + "Weight: " + d.vweight + "\n" + "Degree: " + d.outDegree; });
 
 	  updateNeighborsTable(nprevAttrName);
 	  updateEdgesTable(eprevAttrName);
@@ -681,9 +681,9 @@
       function updateNeighborsTable(attrName) {
         nprevAttrName = attrName;
 
-        var reserved = ["fixed","weight","x","y","px","py","index","inDegree"]; /* in degree and out are the same, lets just use one */
+        var reserved = ["fixed","weight","x","y","px","py","index","inDegree", "physID"]; /* in degree and out are the same, lets just use one */
         d3.select("#neighborsbody").selectAll("tr").remove();
-        names = {"vid":"STINGER ID", "vtype":"Type", "vweight":"Weight", "outDegree":"Degree", "physID":"Physical ID"};
+        names = {"vid":"STINGER ID", "vtype":"Type", "vweight":"Weight", "outDegree":"Degree"};
 
         // Header
         nth = d3.select("#neighborshead").selectAll("th")
